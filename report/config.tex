@@ -1,0 +1,32 @@
+%---------------------------------------------------------------------
+%
+%                          config.tex
+%
+%---------------------------------------------------------------------
+%
+% Constants that decide how the document is compiled.
+%
+% Release mode hides the notes made with \com{...}, \comp{...} and
+% \todo{...} and generates the indices. Debug mode does the opposite: the
+% notes show up and the indices, which are slow to build and only useful
+% for the final version, do not.
+%
+% Run latexmk -C (or delete the auxiliary files) after changing anything
+% in this file.
+%
+%---------------------------------------------------------------------
+
+% Comment this line out while drafting, so that \todo{...} notes are
+% visible in the PDF. It must be uncommented for anything handed in.
+\def\release{1}
+
+% Uncomment to include the acronym list in release mode (in debug mode it
+% is never included).
+%\def\acronimosEnRelease{1}
+
+% Uncomment one of these to build a single chapter or appendix, which is
+% much faster while writing.
+%
+% \compilaCapitulo{01_introduction}
+% \compilaCapitulo{06_results}
+% \compilaApendice{a_reproducibility}

@@ -1,0 +1,12 @@
+# Normalise line endings. The work happens on Windows and the trained models run
+# on a Linux server, so without this the same file has two hashes.
+* text=auto eol=lf
+
+# Binary: never touched.
+*.png binary
+*.pdf binary
+*.jpg binary
+*.mp3 binary
+*.npy binary
+*.npz binary
+*.pt  binary

@@ -1,0 +1,78 @@
+\chapter{Methods}
+\label{cap:methods}
+
+% Each phase of the work adds its subsection here as it is implemented, so that
+% the report grows at the same pace as the code.
+
+\section{Pipeline overview}
+\label{sec:pipeline}
+
+\todo{One figure and one paragraph: audio, features, embedding, cosine
+similarity, kNN graph, evaluation. Say that the embedding box is deliberately
+isolated, so that replacing MFCCs with a trained network changes one
+configuration file and nothing else.}
+
+\section{Experiment framework}
+\label{sec:framework}
+
+One experiment is one YAML file. A configuration file inherits from a global
+default file, a dataset file and an extractor file through a \texttt{defaults}
+list, and the resulting document is hashed; that hash names both the cache
+directory of every expensive artefact and the directory of the run. Datasets,
+extractors, graph builders, relevance functions and evaluators are registered
+under a name, so adding a model means adding one class and one configuration
+file rather than editing the pipeline.
+
+Every execution writes a directory holding the resolved configuration, the
+metrics, the figures, the log, and a provenance record with the git commit,
+whether the working tree was clean, the exact version of every dependency, the
+seed, the platform and the time each stage took. A number in this report can
+therefore be traced back to the code and the configuration that produced it.
+
+\section{Audio preprocessing}
+\label{sec:audio}
+
+\todo{Decoding, resampling to 22\,050\,Hz, conversion to mono, and fixing the
+length to 661\,500 samples so that every spectrogram has the same number of
+frames. Log-mel spectrograms: 2048-point FFT, hop 512, 128 mel bands.}
+
+\section{Feature extraction}
+\label{sec:features}
+
+\todo{The MFCC baseline: 20 coefficients plus deltas, mean and standard
+deviation pooled over time, 80 dimensions. Explain why $c_0$ is discarded: it is
+the frame energy, that is, the mastering loudness of the MP3 rather than the
+timbre, and it would dominate the cosine similarity. Describe the random control
+and say that it is reported next to every model.}
+
+\section{Embeddings}
+\label{sec:embeddings}
+
+\todo{Standardisation fitted on the training split only, optional PCA, and L2
+normalisation so that cosine similarity is an inner product. Explain why the
+scaler is fitted on MTT itself rather than transferred from FMA.}
+
+\section{Trained models}
+\label{sec:trained-models}
+
+\todo{Phase R8. The convolutional backbone, the classification head, and the
+same backbone trained with a contrastive \cite{Hadsell2006} and a triplet
+\cite{Schroff2015} loss. State the sampling rule and its reason: a positive pair
+is two clips of the same genre by different artists, because pairing clips of
+one artist teaches the network to recognise the artist and the album production
+with it.}
+
+\section{MERT}
+\label{sec:mert}
+
+\todo{Phase R9. MERT at 24\,kHz \cite{Li2023}, time-averaged per layer, with the
+layer chosen on the validation split only.}
+
+\section{Similarity graph}
+\label{sec:graph}
+
+\todo{Brute-force cosine kNN in bounded-memory row blocks. Be explicit that
+self-exclusion is done by row index rather than by comparing similarity values:
+with duplicated vectors a value-based rule silently removes the wrong
+neighbour. Describe the near-duplicate detection and the variants: mutual kNN,
+the $\varepsilon$ threshold, and weighted against unweighted edges.}

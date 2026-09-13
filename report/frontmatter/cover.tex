@@ -1,0 +1,97 @@
+%---------------------------------------------------------------------
+%
+%                          frontmatter/cover.tex
+%
+%---------------------------------------------------------------------
+%
+% The normalised cover required by V.1: title in Spanish and in English,
+% both authors, supervisor, academic year, and the full identification of
+% the subject ("Trabajo de Fin de Grado del Grado en ..., Facultad de
+% Informatica, Universidad Complutense de Madrid").
+%
+% The grade goes on the cover of the FINAL version only (V.12); the line
+% that prints it is commented out below.
+%
+% Derived from Cascaras/cover.tex of the TFGTeXiS template.
+%
+%---------------------------------------------------------------------
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Title in Spanish. V.4 keeps it bilingual even though the body of the
+% report is written entirely in English.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\tituloPortada{%
+\tituloEspanol
+}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Title in English.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\tituloPortadaEng{%
+\titulo
+}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Authors. Two of them, one per line.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\autorPortada{%
+\textcolor{red}{First Author Name}\\
+\textcolor{red}{Second Author Name}
+}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Date on the cover.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\fechaPublicacion{\curso}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% University crest.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\imagenPortada{figures/static/escudoUCMcolor}
+\escalaImagenPortada{.2}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Type of document, printed under the crest.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\tipoDocumento{Trabajo de Fin de Grado}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Institution. Kept in Spanish because it is the official name of the
+% degree and the faculty.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\institucion{%
+Grado en \grado\\[0.2em]
+Facultad de Inform\'atica\\[0.2em]
+Universidad Complutense de Madrid
+}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Supervisor. Must match the name published on the faculty TFG website
+% (V.1). Uncomment \colaboradorPortada only if there is a co-supervisor.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\directorPortada{\director}
+%\colaboradorPortada{\textcolor{red}{Co-supervisor Name}}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% First free text of the second cover page.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\textoPrimerSubtituloPortada{%
+\textbf{Trabajo de Fin de Grado del Grado en \grado}\\[0.3em]
+\textbf{Curso \curso}\\[0.3em]
+}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Second free text: examination session, and the grade.
+%
+% V.12: the grade appears on the cover of the FINAL version only, once the
+% board has given it. Uncomment the second line then, and not before.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\textoSegundoSubtituloPortada{%
+\textbf{Convocatoria: }\textit{\textcolor{red}{Febrero/Junio/Septiembre} \the\year}%\\[0.2em]
+%\textbf{Calificaci\'on: }\textit{\textcolor{red}{Nota}}
+}
+
+%%
+%% Build the covers
+%%
+\makeCover

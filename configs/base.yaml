@@ -1,0 +1,70 @@
+# Global defaults. Every other configuration file inherits from this one through
+# its `defaults:` list, and overrides only what it needs to change.
+#
+# Constants here are the ones that were validated on the archived pipeline; the
+# comment next to each says why it has the value it has.
+
+seed: 42
+
+# --- Audio ------------------------------------------------------------------
+audio:
+  sample_rate: 22050          # native rate of the FMA excerpts
+  clip_seconds: 30.0          # nominal length of an FMA excerpt
+  min_seconds: 1.0            # anything shorter is unusable and is dropped
+  # FMA excerpts are not exactly 30 s long (track 2 decodes to 660984 samples).
+  # Every clip is trimmed or zero-padded to this length so that spectrograms
+  # have the same number of frames and the pooled vectors stay comparable.
+  clip_samples: 661500        # = sample_rate * clip_seconds
+  mono: true
+
+# --- Log-mel spectrogram (the input of both MFCC and the CNN) ---------------
+spectrogram:
+  n_fft: 2048
+  hop_length: 512
+  n_mels: 128
+  fmin: 0
+  fmax: 11025                 # Nyquist at 22050 Hz
+
+# --- Embedding post-processing ----------------------------------------------
+embedding:
+  # The scaler and the PCA are fitted on the training split only. Fitting them
+  # on the full set would leak test statistics into the representation.
+  fit_on: training
+  standardize: true
+  l2_normalize: true
+  pca:
+    enabled: false
+    n_components: null
+
+# --- Similarity graph --------------------------------------------------------
+graph:
+  builder: knn
+  metric: cosine
+  k: 10
+  # Self-exclusion is done by row index, never by comparing identifiers or
+  # similarity values: with duplicated vectors a value-based rule silently
+  # removes the wrong neighbour.
+  exclude_self: true
+
+# --- Retrieval evaluation ----------------------------------------------------
+retrieval:
+  ks: [1, 5, 10, 20]          # k = 10 is the headline number
+  queries: all                # all | test
+  # dedup is the headline variant: the near-duplicate partner of a query counts
+  # as the query itself, so it leaves both the ranking and the relevant set.
+  variants: [dedup, raw, artist_filter]
+  relevance: label_match
+
+# --- Uncertainty --------------------------------------------------------------
+bootstrap:
+  n_resamples: 1000
+  confidence: 0.95
+  # Tracks by the same artist are not independent, so model comparisons are read
+  # off the artist-clustered interval rather than the per-query one.
+  levels: [query, artist]
+
+# --- Execution ----------------------------------------------------------------
+runtime:
+  n_jobs: -1                  # -1 = every core
+  progress: true
+  cache: true

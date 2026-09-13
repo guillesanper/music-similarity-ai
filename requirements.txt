@@ -1,0 +1,22 @@
+# CPU dependencies (pinned). Install with:
+#   pip install -r requirements.txt
+# Deep-learning extras live in requirements-dl.txt, dev tools in requirements-dev.txt.
+#
+# The numeric stack is pinned to the exact versions used to produce the
+# reference figures, so that the regression checks of phase R2 (MFCC matrices
+# identical to the ones of the archived repository) are meaningful.
+
+numpy==2.1.3
+scipy==1.18.1
+pandas==2.3.3
+scikit-learn==1.9.0
+librosa==1.0.0
+soundfile==0.14.0
+soxr==1.1.0
+numba==0.67.0
+llvmlite==0.49.0
+joblib==1.6.0
+tqdm==4.70.1
+matplotlib==3.11.2
+networkx==3.6.1
+PyYAML==6.0.3

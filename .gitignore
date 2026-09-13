@@ -1,0 +1,74 @@
+# ---------------------------------------------------------------------------
+# Rule of thumb: if the code produces it, it is not versioned.
+# Documented exceptions: report/figures/generated/ and report/tables/generated/,
+# which ARE versioned so that the report compiles without re-running experiments.
+# ---------------------------------------------------------------------------
+
+# --- Raw and downloaded data ---------------------------------------------
+datasets/*/raw/
+datasets/*/*.zip
+datasets/*/*.zip.[0-9][0-9][0-9]
+datasets/*/*.tar
+datasets/*/*.tar.gz
+
+# --- Generated artefacts and run outputs ---------------------------------
+outputs/
+*.npy
+*.npz
+*.h5
+*.parquet
+
+# --- Model checkpoints ----------------------------------------------------
+*.pt
+*.pth
+*.ckpt
+checkpoints/
+
+# --- Python ---------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+env/
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.ipynb_checkpoints/
+
+# --- LaTeX auxiliaries ----------------------------------------------------
+*.aux
+*.bbl
+*.blg
+*.brf
+*.fdb_latexmk
+*.fls
+*.idx
+*.ilg
+*.ind
+*.lof
+*.log
+*.lot
+*.out
+*.synctex.gz
+*.toc
+*.xdv
+report/main.pdf
+
+# --- Local tooling --------------------------------------------------------
+.claude/
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# --- Explicit exceptions (versioned on purpose) ---------------------------
+!report/figures/generated/
+!report/figures/generated/**
+!report/tables/generated/
+!report/tables/generated/**
+!musicsim/resources/**

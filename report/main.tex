@@ -1,0 +1,165 @@
+% ---------------------------------------------------------------------
+%
+%                              main.tex
+%
+% ---------------------------------------------------------------------
+%
+% Master file of the report. It only configures the LaTeX environment and
+% includes the files that hold each part of the document.
+%
+% Derived from TFGTeXiS.tex of the official TFGTeXiS template
+% (https://informatica.ucm.es/file/plantilla_tfg_latex?ver), reorganised
+% into the directory layout of this repository and switched to English as
+% the main language. report/README.md lists every change made to the
+% template and why.
+%
+% Files this document needs:
+%
+%     texis/*        template style files (unchanged except for the path
+%                    and language edits listed in report/README.md)
+%     frontmatter/*  cover, resumen, abstract, acknowledgements, dedication,
+%                    bibliography configuration, closing page
+%     sections/*     the chapters
+%     appendices/*   the appendices
+%     constants.tex  title, authors, supervisor, degree
+%     config.tex     compilation mode
+%     hyphenation.tex  hyphenation exceptions
+%     bibliography.bib  the references
+%
+% ---------------------------------------------------------------------
+
+\documentclass[12pt,a4paper,twoside]{book}
+
+% \compilaCapitulo{<name>} and \compilaApendice{<name>} restrict the build to
+% one chapter while keeping the files the template always needs. They are used
+% (optionally) from config.tex, and have to be defined here because of the way
+% \includeonly works.
+\newcommand{\ficherosBasicosTeXiS}{%
+texis/TeXiS_pream,texis/TeXiS_cab,texis/TeXiS_bib,texis/TeXiS_cover%
+}
+\newcommand{\ficherosBasicosTexto}{%
+constants,hyphenation,frontmatter/bibliography,config%
+}
+\newcommand{\compilaCapitulo}[1]{%
+\includeonly{\ficherosBasicosTeXiS,\ficherosBasicosTexto,sections/#1}%
+}
+\newcommand{\compilaApendice}[1]{%
+\includeonly{\ficherosBasicosTeXiS,\ficherosBasicosTexto,appendices/#1}%
+}
+
+%- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+%                             Preamble
+%- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+% Compilation mode. Must come before the TeXiS package.
+\include{config}
+
+\usepackage{texis/TeXiS}
+
+% Title, authors, supervisor, degree and academic year.
+\include{constants}
+
+% Packages used by the sections of this report and not pulled in by the
+% template itself.
+\usepackage{booktabs}   % rules for the generated tables
+\usepackage{siunitx}    % aligned numbers in the result tables
+\usepackage{subcaption} % side-by-side figures
+
+%
+% PDF metadata
+%
+\ifpdf\hypersetup{%
+    pdftitle = {\titulo},
+    pdfsubject = {Bachelor's Thesis, Facultad de Informatica, Universidad Complutense de Madrid},
+    pdfkeywords = {music information retrieval, music similarity, audio embeddings,
+      similarity graphs, evaluation},
+    pdfauthor = {\textcopyright\ \autor},
+    pdfcreator = {\LaTeX\ with the hyperref package},
+    pdfproducer = {pdfeTeX-0.\the\pdftexversion\pdftexrevision},
+    }
+    \pdfinfo{/CreationDate (\today)}
+\fi
+
+%- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+%                             Document
+%- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+\begin{document}
+
+\input{hyphenation}
+
+% Front matter: roman page numbers.
+\frontmatter
+\pagestyle{empty}
+
+\include{frontmatter/cover}
+\include{frontmatter/dedication}
+\include{frontmatter/acknowledgements}
+
+% V.2b and V.4: the summary and its keywords are required in Spanish *and* in
+% English, even though the body of the report is written entirely in English.
+% resumen.tex is therefore the only Spanish text in the document, and it is
+% wrapped in otherlanguage so that babel hyphenates it as Spanish.
+\begin{otherlanguage}{spanish}
+\include{frontmatter/resumen}
+\end{otherlanguage}
+\include{frontmatter/abstract}
+
+\ifx\generatoc\undefined
+\else
+\include{texis/TeXiS_toc}
+\fi
+
+% Main matter: arabic page numbers and the normal running head.
+\mainmatter
+
+\pagestyle{fancy}
+\restauraCabecera
+
+% The body of the report. Chapters 1 and 6-8 are the ones that count towards
+% the 30-page minimum of V.3 (25 pages, plus 5 for the second author).
+\include{sections/01_introduction}
+\include{sections/02_related_work}
+\include{sections/03_datasets_ground_truth}
+\include{sections/04_methods}
+\include{sections/05_evaluation_protocol}
+\include{sections/06_results}
+\include{sections/07_discussion}
+\include{sections/08_conclusions_future_work}
+
+% V.5: this is a two-author project, so the personal contributions chapter is
+% mandatory and needs at least two pages per author. Do not remove it.
+\include{sections/09_personal_contributions}
+
+% The template also ships Spanish duplicates of the introduction and the
+% conclusions, for reports written in Spanish. This report is written in
+% English throughout, so there is a single version of each chapter and the
+% duplicates are gone.
+
+%
+% Bibliography
+%
+\include{frontmatter/bibliography}
+
+%
+% Appendices
+%
+\appendix
+\include{appendices/a_reproducibility}
+\include{appendices/b_full_tables}
+
+\backmatter
+
+% Word index. Only generated when \generaindice is defined; see texis/TeXiS.sty.
+\ifx\generaindice\undefined
+\else
+%\include{texis/TeXiS_indice}
+\fi
+
+% Acronym list. Only generated when \generaacronimos is defined.
+\ifx\generaacronimos\undefined
+\else
+\include{texis/TeXiS_acron}
+\fi
+
+\include{frontmatter/end}
+\end{document}

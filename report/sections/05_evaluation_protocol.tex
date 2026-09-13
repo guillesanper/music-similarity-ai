@@ -1,0 +1,72 @@
+\chapter{Evaluation protocol}
+\label{cap:protocol}
+
+\section{Two levels}
+\label{sec:two-levels}
+
+\todo{N1, probing the representation, and N2, the quality of the similarity
+graph. Say why they are reported separately: they answer different questions,
+and a representation can do well on one and badly on the other.}
+
+\section{Retrieval}
+\label{sec:retrieval-protocol}
+
+\todo{Gallery, query protocol and the exact definitions. The gallery is always
+the whole corpus; \texttt{queries} only decides which queries the averages run
+over, and \texttt{test} is the headline protocol once a model has been trained
+on \texttt{training}. Give the formulas for P@k, R@k, AP@k and nDCG@k, binary
+and graded, including the denominator of AP@k. Describe the three exclusion
+variants: \texttt{dedup}, the headline one, where the near-duplicate partner of
+a query counts as the query itself and leaves both the ranking and the relevant
+set; \texttt{raw}, with no such treatment; and \texttt{artist\_filter}, which
+removes every track by the same artist.}
+
+\section{Uncertainty}
+\label{sec:uncertainty}
+
+\todo{Percentile bootstrap with 1000 resamples. Explain the clustered variant
+and why it is the one to read when comparing models: tracks by one artist are
+not independent, so resampling queries understates the uncertainty. Paired
+bootstrap for differences between models, so the interval is on the difference
+and not on two independent means.}
+
+\section{Agreement with human judgements}
+\label{sec:triplet-protocol}
+
+\todo{For each constraint $(s, p, n)$, a hit is $\cos(s,p) > \cos(s,n)$, with
+ties counted as one half. The headline number is the unweighted mean over the
+860 constraints, which is what the literature reports; the vote-weighted mean
+and the subset with margin at least 2 are variants. Intervals cluster by
+triplet, 337 clusters. Reference points for the table: chance is 0.5, a random
+embedding is the negative control, tag Jaccard reaches about 0.57, genre reaches
+0.90 on the 12\,\% of constraints where it decides at all, MFCC audio-words
+reach 63.6 to 64.6\,\% \cite{Karamanolakis2016}, and metrics learned on the
+constraints themselves reach 69.5 to 75.6\,\% \cite{Wolff2012}. State the
+limitation plainly: 860 constraints in 337 triplets give an interval of roughly
+$\pm 3$ to 5 points, which separates a baseline from a strong model but not two
+close variants.}
+
+\section{Probing}
+\label{sec:probing-protocol}
+
+\todo{Logistic and 512-unit MLP probes over frozen embeddings, the grid searched
+on validation only, and the metrics per task kind. Say why touching the test
+split during selection would make every published probing number optimistic.}
+
+\section{Graph structure, hubness and robustness}
+\label{sec:structure-protocol}
+
+\todo{Community detection with several seeds and the stability of the partition
+reported next to its quality; ARI, NMI, modularity, components, clustering
+coefficient and silhouette. The k-occurrence distribution, its skewness,
+anti-hubs, and mutual proximity. Robustness as neighbour-set Jaccard@k and
+$\Delta$P@k under noise, gain, pitch shift, time stretch and cropping.}
+
+\section{Invariants}
+\label{sec:invariants}
+
+The whole evaluation rests on three rules that the code enforces rather than
+assumes. Rows and identifiers stay aligned, and every cross-reference goes
+through the identifier, never through a position. Anything fitted, the scaler,
+the PCA and the probes, is fitted on the training split alone. Every source of
+randomness is seeded from the single seed the run records.

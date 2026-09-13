@@ -1,0 +1,168 @@
+% ---------------------------------------------------------------------------
+% References.
+%
+% The keys here are the same ones used in docs/sources.md, which records for
+% each entry what it contributes, where it is used, and whether it has been read
+% or only located. Keep the two files in step: a key added here gets a line
+% there.
+%
+% Compiled with texis/TeXiS_en.bst (BibTeX, English style).
+% ---------------------------------------------------------------------------
+
+% --- Datasets ---------------------------------------------------------------
+
+@inproceedings{Defferrard2017,
+  author    = {Micha\"el Defferrard and Kirell Benzi and Pierre Vandergheynst and Xavier Bresson},
+  title     = {{FMA}: A Dataset for Music Analysis},
+  booktitle = {Proceedings of the 18th International Society for Music Information
+               Retrieval Conference ({ISMIR})},
+  year      = {2017},
+  note      = {Code MIT, metadata CC BY 4.0, audio under per-track licences.
+               \url{https://github.com/mdeff/fma}}
+}
+
+@inproceedings{Law2009,
+  author    = {Edith Law and Kris West and Michael Mandel and Mert Bay and J. Stephen Downie},
+  title     = {Evaluation of Algorithms Using Games: The Case of Music Tagging},
+  booktitle = {Proceedings of the 10th International Society for Music Information
+               Retrieval Conference ({ISMIR})},
+  pages     = {387--392},
+  year      = {2009},
+  note      = {The TagATune game and the MagnaTagATune dataset}
+}
+
+@inproceedings{Bogdanov2019,
+  author    = {Dmitry Bogdanov and Minz Won and Philip Tovstogan and Alastair Porter and Xavier Serra},
+  title     = {The {MTG}-Jamendo Dataset for Automatic Music Tagging},
+  booktitle = {Machine Learning for Music Discovery Workshop, International
+               Conference on Machine Learning ({ICML})},
+  year      = {2019}
+}
+
+% --- Similarity ground truth and evaluation ---------------------------------
+
+@inproceedings{Wolff2012,
+  author    = {Daniel Wolff and Sebastian Stober and Andreas N\"urnberger and Tillman Weyde},
+  title     = {A Systematic Comparison of Music Similarity Adaptation Approaches},
+  booktitle = {Proceedings of the 13th International Society for Music Information
+               Retrieval Conference ({ISMIR})},
+  year      = {2012},
+  note      = {Source of the constraint derivation used here}
+}
+
+@article{Karamanolakis2016,
+  author  = {Giannis Karamanolakis and Elias Iosif and Athanasia Zlatintsi and
+             Aggelos Pikrakis and Alexandros Potamianos},
+  title   = {Audio-Based Distributional Semantic Models for Music Auto-Tagging
+             and Similarity Measurement},
+  journal = {arXiv preprint arXiv:1612.08391},
+  year    = {2016}
+}
+
+@inproceedings{Lee2020,
+  author    = {Jongpil Lee and Nicholas J. Bryan and Justin Salamon and Zeyu Jin and Juhan Nam},
+  title     = {Disentangled Multidimensional Metric Learning for Music Similarity},
+  booktitle = {IEEE International Conference on Acoustics, Speech and Signal
+               Processing ({ICASSP})},
+  year      = {2020}
+}
+
+@article{Cleveland2020,
+  author  = {Joseph Cleveland and Derek Cheng and Michael Zhou and Thorsten Joachims and Douglas Turnbull},
+  title   = {Content-Based Music Similarity with Triplet Networks},
+  journal = {arXiv preprint arXiv:2008.04938},
+  year    = {2020}
+}
+
+@inproceedings{Ellis2002,
+  author    = {Daniel P. W. Ellis and Brian Whitman and Adam Berenzweig and Steve Lawrence},
+  title     = {The Quest for Ground Truth in Musical Artist Similarity},
+  booktitle = {Proceedings of the 3rd International Society for Music Information
+               Retrieval Conference ({ISMIR})},
+  year      = {2002}
+}
+
+@inproceedings{Logan2003,
+  author    = {Beth Logan and Daniel P. W. Ellis and Adam Berenzweig},
+  title     = {Toward Evaluation Techniques for Music Similarity},
+  booktitle = {Workshop on the Evaluation of Music Information Retrieval Systems,
+               {SIGIR}},
+  year      = {2003}
+}
+
+% --- Representations and benchmarks -----------------------------------------
+
+@inproceedings{Castellon2021,
+  author    = {Rodrigo Castellon and Chris Donahue and Percy Liang},
+  title     = {Codified Audio Language Modeling Learns Useful Representations for
+               Music Information Retrieval},
+  booktitle = {Proceedings of the 22nd International Society for Music Information
+               Retrieval Conference ({ISMIR})},
+  year      = {2021},
+  note      = {Source of the {MFCC} probing reference figures}
+}
+
+@inproceedings{Yuan2023,
+  author    = {Ruibin Yuan and Yinghao Ma and Yizhi Li and Ge Zhang and others},
+  title     = {{MARBLE}: Music Audio Representation Benchmark for Universal Evaluation},
+  booktitle = {Advances in Neural Information Processing Systems 36, Datasets and
+               Benchmarks Track},
+  pages     = {39626--39647},
+  year      = {2023}
+}
+
+@article{Li2023,
+  author  = {Yizhi Li and Ruibin Yuan and Ge Zhang and Yinghao Ma and others},
+  title   = {{MERT}: Acoustic Music Understanding Model with Large-Scale
+             Self-Supervised Training},
+  journal = {arXiv preprint arXiv:2306.00107},
+  year    = {2023}
+}
+
+% --- Metric learning ---------------------------------------------------------
+
+@inproceedings{Hadsell2006,
+  author    = {Raia Hadsell and Sumit Chopra and Yann LeCun},
+  title     = {Dimensionality Reduction by Learning an Invariant Mapping},
+  booktitle = {IEEE Computer Society Conference on Computer Vision and Pattern
+               Recognition ({CVPR})},
+  pages     = {1735--1742},
+  year      = {2006}
+}
+
+@inproceedings{Schroff2015,
+  author    = {Florian Schroff and Dmitry Kalenichenko and James Philbin},
+  title     = {{FaceNet}: A Unified Embedding for Face Recognition and Clustering},
+  booktitle = {IEEE Conference on Computer Vision and Pattern Recognition ({CVPR})},
+  pages     = {815--823},
+  year      = {2015}
+}
+
+% --- Tools --------------------------------------------------------------------
+
+@inproceedings{McFee2015,
+  author    = {Brian McFee and Colin Raffel and Dawen Liang and Daniel P. W. Ellis and
+               Matt McVicar and Eric Battenberg and Oriol Nieto},
+  title     = {librosa: Audio and Music Signal Analysis in {Python}},
+  booktitle = {Proceedings of the 14th Python in Science Conference ({SciPy})},
+  pages     = {18--25},
+  year      = {2015}
+}
+
+@article{Pedregosa2011,
+  author  = {Fabian Pedregosa and Ga\"el Varoquaux and Alexandre Gramfort and others},
+  title   = {Scikit-learn: Machine Learning in {Python}},
+  journal = {Journal of Machine Learning Research},
+  volume  = {12},
+  pages   = {2825--2830},
+  year    = {2011}
+}
+
+@article{Harris2020,
+  author  = {Charles R. Harris and K. Jarrod Millman and St\'efan J. van der Walt and others},
+  title   = {Array Programming with {NumPy}},
+  journal = {Nature},
+  volume  = {585},
+  pages   = {357--362},
+  year    = {2020}
+}

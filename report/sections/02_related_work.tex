@@ -1,0 +1,42 @@
+\chapter{Related work}
+\label{cap:related-work}
+
+\section{Audio representations for music}
+\label{sec:representations}
+
+\todo{From hand-crafted descriptors to learned ones: MFCCs and their pooling,
+convolutional tagging networks, metric learning with contrastive
+\cite{Hadsell2006} and triplet \cite{Schroff2015} losses, and self-supervised
+models such as MERT \cite{Li2023}.}
+
+\section{Evaluating representations: probing benchmarks}
+\label{sec:probing-benchmarks}
+
+\todo{Castellon et al. \cite{Castellon2021} and MARBLE \cite{Yuan2023}. Be
+precise about what MARBLE is and is not: it is a probing benchmark over frozen
+representations, it contains no similarity or retrieval task at all, and it
+ships no MFCC baseline; the MFCC reference numbers come from
+\cite{Castellon2021}. See \texttt{docs/ground-truth-study.md}.}
+
+\section{Music similarity and its ground truth}
+\label{sec:similarity-ground-truth}
+
+\todo{The odd-one-out triplet game of TagATune \cite{Law2009}, the constraint
+derivation and the comparison of adaptation methods of Wolff et al.
+\cite{Wolff2012}, the audio-word results of Karamanolakis et al.
+\cite{Karamanolakis2016}, the multidimensional judgements of Lee et al.
+\cite{Lee2020}, and artist-based relevance on FMA \cite{Cleveland2020}.}
+
+\section{Similarity graphs and hubness}
+\label{sec:graphs-hubness}
+
+\todo{Nearest-neighbour graphs, mutual kNN, the hubness phenomenon in
+high-dimensional spaces and mutual proximity as a remedy, community detection
+and what modularity does and does not say about a music catalogue.}
+
+\section{Positioning}
+\label{sec:positioning}
+
+\todo{One paragraph saying what this work adds: it puts the two levels side by
+side on the same embeddings, and it measures the genre proxy against human
+judgements instead of assuming it.}

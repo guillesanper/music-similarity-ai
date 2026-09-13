@@ -1,0 +1,14 @@
+# Deep-learning dependencies (pinned). Only needed from phase R8 on:
+# CNN / Siamese / Triplet training and the MERT extractor.
+#
+#   pip install -r requirements.txt -r requirements-dl.txt
+#
+# On the GPU server install the CUDA build instead, choosing the index URL that
+# matches the installed driver, e.g. for CUDA 12.4:
+#   pip install torch==2.6.0 torchaudio==2.6.0 --index-url https://download.pytorch.org/whl/cu124
+
+torch==2.6.0
+torchaudio==2.6.0
+transformers==4.49.0
+safetensors==0.5.3
+huggingface-hub==0.29.1

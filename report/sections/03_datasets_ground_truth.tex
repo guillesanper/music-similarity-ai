@@ -1,0 +1,59 @@
+\chapter{Datasets and ground truth}
+\label{cap:datasets}
+
+\section{FMA small}
+\label{sec:fma}
+
+\todo{8000 excerpts of 30 seconds, 8 genres, 1000 each \cite{Defferrard2017}.
+Report what the pipeline actually keeps: six excerpts are excluded as corrupt
+(three are 1\,KB files with no decodable audio, three decode but last far less
+than 30 seconds), leaving 7994. Note the two-row header of \texttt{tracks.csv},
+the official artist-disjoint split, and the genre hierarchy in
+\texttt{genres.csv}: 114 genres in the small subset, depth at most 4, and the
+root of \texttt{genres\_all} agrees with \texttt{genre\_top} for all 7994
+tracks. Licences: code MIT, metadata CC BY 4.0, audio per artist.}
+
+\section{MagnaTagATune}
+\label{sec:mtt}
+
+\todo{25\,863 clips of about 29 seconds from 5405 Magnatune songs, 188 tags
+\cite{Law2009}. Used for evaluation only: nothing is trained on it. State the
+two limitations honestly: the audio is 16\,kHz mono MP3, so it carries nothing
+above 8\,kHz, and the domain leans towards classical, new age and electronic
+music. Say that the clips are resampled to 22\,050\,Hz and padded to 30 seconds
+so that a single extractor serves both corpora, and that this is a documented
+limitation rather than a change of method. No explicit licence is published;
+academic use only.}
+
+\section{Human similarity judgements}
+\label{sec:triplets}
+
+\todo{The bonus mode of TagATune: two players hear three clips and independently
+vote for the odd one out. Derive the constraints as Wolff et al. do
+\cite{Wolff2012}: a vote for the outlier $k$ of a triplet $(i,j,k)$ gives
+$d(i,j) < d(i,k)$ and $d(j,i) < d(j,k)$, and two-cycles are removed by
+subtracting opposing votes. Report the chain 533 rows, 7650 votes, 15\,300
+edges, 1598 unique, 860 consistent constraints of total weight 6898, over 337
+triplets and 993 clips, and say that these reproduce the published counts
+exactly. Report the inter-annotator agreement as well: the most-voted clip takes
+70.7\,\% of the votes of its row on average, against 33.3\,\% by chance, which
+puts a ceiling well below 100\,\% on any model.}
+
+\section{Relevance functions}
+\label{sec:relevance}
+
+\todo{Set out the four notions of "relevant" the evaluation uses and what each
+one is a proxy for: same \texttt{genre\_top} (binary), graded relevance on the
+genre tree, per-facet tag overlap on MTT, and same artist. Justify the graded
+gain $g = \mathbf{1}[\text{same root}] \cdot (1 + J(\text{sub-genres}))$ and note
+the finding that motivates it: among tracks sharing \texttt{genre\_top}, only
+21.6\,\% share any sub-genre.}
+
+\section{What genre labels do and do not capture}
+\label{sec:genre-proxy}
+
+\todo{The central measurement of the study, computed without any audio: on the
+MTT constraints, when genre tags separate the two candidates at all, they agree
+with the human vote 90.1\,\% of the time, but they separate them in only 12\,\%
+of the constraints (101 of 860). Genre is a precise proxy with poor coverage.
+Full derivation in \texttt{docs/ground-truth-study.md}.}

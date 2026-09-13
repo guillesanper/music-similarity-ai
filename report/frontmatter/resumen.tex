@@ -1,0 +1,37 @@
+%---------------------------------------------------------------------
+%
+%                        frontmatter/resumen.tex
+%
+%---------------------------------------------------------------------
+%
+% El resumen en castellano y sus palabras clave. Es el UNICO texto en
+% castellano de la memoria: V.4 permite escribirla integramente en ingles,
+% pero V.2b exige el resumen y un maximo de 10 palabras clave en los dos
+% idiomas. main.tex lo envuelve en otherlanguage{spanish} para que babel
+% lo silabee como castellano.
+%
+% Media pagina. Debe incluir el titulo en castellano.
+%
+%---------------------------------------------------------------------
+
+\chapter*{Resumen}
+\addcontentsline{toc}{chapter}{Resumen}
+
+\section*{\tituloPortadaVal}
+
+\todo{Escribir el resumen, de media pagina, cuando esten los resultados.
+Debe decir, en este orden: (1) que dos canciones "se parezcan" no tiene
+una definicion operativa y la literatura usa el genero como sustituto;
+(2) que este trabajo construye un grafo de similitud a partir de
+representaciones del audio y lo evalua en dos niveles, sondas sobre la
+representacion y calidad del grafo; (3) que modelos y que datos se usan
+(MFCC, CNN, redes siamesa y de tripletes, MERT; FMA small y
+MagnaTagATune); (4) el resultado principal, incluyendo el grado de
+acuerdo con los juicios humanos de similitud; y (5) la conclusion.}
+
+\section*{Palabras clave}
+
+\noindent \todo{Maximo 10 palabras clave separadas por comas. Propuesta:
+recuperacion de informacion musical, similitud musical, embeddings de
+audio, grafos de similitud, vecinos mas cercanos, evaluacion, MFCC,
+aprendizaje de metricas, juicios humanos de similitud.}

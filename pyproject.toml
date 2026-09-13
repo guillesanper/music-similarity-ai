@@ -1,0 +1,92 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "musicsim"
+version = "0.1.0"
+description = "A framework for music similarity experiments: audio to embeddings to similarity graphs, evaluated with retrieval, structure, probing and human triplet judgements."
+readme = "README.md"
+requires-python = "==3.12.*"
+license = "MIT"
+license-files = ["LICENSE"]
+keywords = ["music information retrieval", "similarity", "embeddings", "graphs", "evaluation"]
+classifiers = [
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Multimedia :: Sound/Audio :: Analysis",
+    "Topic :: Scientific/Engineering",
+]
+dependencies = [
+    "numpy==2.1.3",
+    "scipy==1.18.1",
+    "pandas==2.3.3",
+    "scikit-learn==1.9.0",
+    "librosa==1.0.0",
+    "soundfile==0.14.0",
+    "numba==0.67.0",
+    "joblib==1.6.0",
+    "tqdm==4.70.1",
+    "matplotlib==3.11.2",
+    "networkx==3.6.1",
+    "PyYAML==6.0.3",
+]
+
+[project.optional-dependencies]
+dl = [
+    "torch==2.6.0",
+    "torchaudio==2.6.0",
+    "transformers==4.49.0",
+]
+dev = [
+    "pytest==9.1.1",
+    "ruff==0.16.7",
+]
+
+[project.scripts]
+musicsim = "musicsim.cli:main"
+
+[tool.setuptools.packages.find]
+# The package lives at the repository root; there is no src/ layout.
+include = ["musicsim*"]
+
+[tool.setuptools.package-data]
+musicsim = ["resources/*.csv", "resources/*.yaml"]
+
+# ---------------------------------------------------------------------------
+# Linting
+# ---------------------------------------------------------------------------
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+extend-exclude = ["report", ".venv"]
+
+[tool.ruff.lint]
+select = [
+    "E",    # pycodestyle errors
+    "W",    # pycodestyle warnings
+    "F",    # pyflakes
+    "I",    # import sorting
+    "B",    # bugbear
+    "UP",   # pyupgrade
+    "C4",   # comprehensions
+    "SIM",  # simplify
+    "RUF",  # ruff-specific
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["musicsim"]
+
+[tool.ruff.format]
+quote-style = "double"
+
+# ---------------------------------------------------------------------------
+# Tests
+# ---------------------------------------------------------------------------
+[tool.pytest.ini_options]
+minversion = "8.0"
+testpaths = ["tests"]
+addopts = "-q --strict-markers --strict-config"
+filterwarnings = ["error::DeprecationWarning:musicsim.*"]
+markers = [
+    "slow: tests that need real audio or a downloaded dataset (deselect with -m 'not slow')",
+]

@@ -1,0 +1,34 @@
+# FMA small: 8000 clips of 30 s, 8 genres x 1000, from Defferrard et al. (2017).
+# Implemented in phase R1 (musicsim/datasets/fma.py).
+
+dataset:
+  name: fma_small
+  directory: fma              # datasets/fma/ under $MUSICSIM_DATA_DIR
+  subset: small               # column ('set', 'subset') of tracks.csv
+
+  # tracks.csv has a two-row header, so it must be read with header=[0, 1].
+  metadata:
+    tracks: raw/fma_metadata/tracks.csv
+    genres: raw/fma_metadata/genres.csv
+  audio_dir: raw/fma_small    # 000/000002.mp3, 156 sub-directories
+
+  expected_items: 8000        # before the corrupt tracks are removed
+  expected_genres: 8
+
+  # Known-bad excerpts, documented in the mdeff/fma wiki. They are excluded even
+  # when the file is on disk:
+  #   99134, 108925, 133297 -> ~1 KB files with no decodable audio
+  #   98565, 98567, 98569   -> decode, but last far less than 30 s, so their
+  #                            pooled vectors would not be comparable
+  exclude_items: [98565, 98567, 98569, 99134, 108925, 133297]
+
+  # Standard index columns: item_id, path, split, artist_id, group_id.
+  labels:
+    primary: genre_top        # the binary relevance label
+    hierarchy: genres_all     # the graded relevance label (genres.csv gives the tree)
+
+  split:
+    source: metadata          # FMA ships its own training/validation/test split
+    # The official split keeps artists apart; the code asserts it rather than
+    # trusting it, because a shared artist would inflate every retrieval number.
+    artist_disjoint: true

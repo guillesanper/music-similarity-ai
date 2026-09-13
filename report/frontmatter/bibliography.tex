@@ -1,0 +1,43 @@
+%---------------------------------------------------------------------
+%
+%                     frontmatter/bibliography.tex
+%
+%---------------------------------------------------------------------
+%
+% Configuration of the bibliography: which .bib files are used, and the
+% epigraph printed before the first entry.
+%
+% The style itself is set in texis/TeXiS_bib.tex, and this report uses
+% texis/TeXiS_en.bst, the English variant of the template style.
+%
+% Derived from Cascaras/bibliografia.tex of the TFGTeXiS template.
+%
+%---------------------------------------------------------------------
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% The .bib files, without extension. They must stay on the same line as
+% the command.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\setBibFiles{%
+bibliography%
+}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Epigraph before the first reference. Delete the contents of
+% \setCitaBibliografia{} to have no epigraph at all.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\setCitaBibliografia{
+\begin{FraseCelebre}
+\begin{Frase}
+  Writing about music is like dancing about architecture.
+\end{Frase}
+\begin{Fuente}
+  Attributed, variously and unreliably, to several musicians
+\end{Fuente}
+\end{FraseCelebre}
+}
+
+%%
+%% Build the bibliography
+%%
+\makeBib

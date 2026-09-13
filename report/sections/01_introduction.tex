@@ -1,0 +1,43 @@
+% V.2c and V.3: this chapter must cover the background, the objectives and the
+% work plan, and together with chapters 6 to 8 it has to reach 30 pages (25,
+% plus 5 for the second author).
+
+\chapter{Introduction}
+\label{cap:introduction}
+
+\section{Background}
+\label{sec:background}
+
+\todo{Musical similarity has no operational definition. State the problem the
+way the literature does: recommendation, playlist generation and catalogue
+exploration all need a notion of "sounds like", and none of the public corpora
+annotates it directly. Explain what is used instead, and why each substitute is
+imperfect: genre labels chosen by the artist, tags written by listeners, and the
+small sets of human triplet judgements that do exist. Cite \cite{Ellis2002} and
+\cite{Logan2003} for the ground-truth problem itself.}
+
+\section{Objectives}
+\label{sec:objectives}
+
+\todo{State the two questions the work answers, which are the two levels of the
+evaluation:
+\begin{itemize}
+  \item \textbf{N1.} Does the representation contain musical information?
+        Measured with probing classifiers over frozen embeddings, following
+        \cite{Castellon2021} and \cite{Yuan2023}.
+  \item \textbf{N2.} Does the representation induce a good similarity graph?
+        Measured with retrieval, graph structure, robustness, and agreement with
+        the human triplet judgements of MagnaTagATune.
+\end{itemize}
+Add the question that motivates the whole study: does the genre proxy measure
+the same thing as perceived similarity?}
+
+\section{Work plan}
+\label{sec:work-plan}
+
+\todo{Describe the plan as it was actually followed: a reproducible experiment
+framework first, then the MFCC baseline, then the graph and retrieval
+evaluation, then the ground truth work, and finally the trained models and MERT
+on the department server. Say which parts ran on a laptop and which needed a
+GPU. Reference Appendix \ref{Appendix:reproducibility} for the exact commands,
+and give the repository URL required by V.10: \repositorio.}

@@ -1,0 +1,14 @@
+# MFCC baseline: 80-dimensional timbral descriptor. Phase R2.
+
+extractor:
+  name: mfcc
+  # n_mfcc + 1 coefficients are computed and c0 is dropped. c0 is the frame
+  # energy, i.e. the mastering loudness of the MP3 rather than the timbre, and
+  # it would dominate the cosine similarity.
+  n_mfcc: 20
+  drop_c0: true
+  deltas: true
+  delta_width: 9              # librosa.feature.delta window, in frames
+  # Pooling over time: [mean, std] of the MFCCs and of their deltas.
+  pooling: [mean, std]
+  dim: 80                     # 4 * n_mfcc

@@ -1,0 +1,25 @@
+# E01 - Does the MFCC embedding retrieve same-genre neighbours better than chance?
+# Report: section 06_results, "Retrieval baseline". Phase R3.
+
+defaults:
+  - ../base.yaml
+  - ../datasets/fma_small.yaml
+  - ../extractors/mfcc.yaml
+
+experiment: e01_mfcc_baseline
+
+stages: [extract, embed, graph, evaluate]
+
+evaluation:
+  retrieval:
+    enabled: true
+    # Both query protocols go into the same CSV: `all` averages over every
+    # track, `test` over the test split only, which is the headline number once
+    # a model has been trained on `training`.
+    queries: [all, test]
+    # The random extractor is evaluated alongside, as the chance floor.
+    baselines: [random]
+
+outputs:
+  metrics: [retrieval.csv, retrieval_per_genre.csv]
+  figures: []
