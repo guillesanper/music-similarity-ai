@@ -128,9 +128,7 @@ def test_a_real_import_error_is_not_swallowed(tmp_path, monkeypatch: pytest.Monk
     # unimplemented phase, and must not be hidden.
     package = tmp_path / "brokenpkg"
     package.mkdir()
-    (package / "__init__.py").write_text(
-        "import a_module_that_does_not_exist\n", encoding="utf-8"
-    )
+    (package / "__init__.py").write_text("import a_module_that_does_not_exist\n", encoding="utf-8")
     monkeypatch.syspath_prepend(str(tmp_path))
     with pytest.raises(ModuleNotFoundError, match="a_module_that_does_not_exist"):
         load_plugins(("brokenpkg",))

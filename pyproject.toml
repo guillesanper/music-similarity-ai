@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "musicsim"
 version = "0.1.0"
-description = "A framework for music similarity experiments: audio to embeddings to similarity graphs, evaluated with retrieval, structure, probing and human triplet judgements."
+description = "A framework for music similarity experiments: siamese networks, classical techniques and MERT compared on similarity graphs (crisp and fuzzy), evaluated with retrieval, structure, probing and human triplet judgements."
 readme = "README.md"
 requires-python = "==3.12.*"
 license = "MIT"

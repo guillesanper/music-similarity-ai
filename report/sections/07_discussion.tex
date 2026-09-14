@@ -16,6 +16,25 @@ human judgements instead?}
 decodability of a label says nothing about whether the cosine geometry orders
 neighbours well, and any case where the two diverge is worth spelling out.}
 
+\section{Siamese networks against classical techniques}
+\label{sec:discussion-siamese}
+
+\todo{Answer SQ5 directly, with the criterion of Section
+\ref{sec:pq-criterion}: which siamese input wins, whether the win survives
+once the gain is separated from the raw input's own quality
+(\texttt{siamese\_emb} against \texttt{mert}, \texttt{siamese\_desc} against
+\texttt{acoustic}), and whether any siamese model beats the best classical
+technique. If a classical technique wins or ties, say so plainly rather than
+downplaying it: that is itself an answer to O2.}
+
+\section{Does gradual modelling help?}
+\label{sec:discussion-fuzzy}
+
+\todo{Answer SQ6: does the fuzzy block (F1--F4) improve on the crisp graph, and
+does the gain depend on the representation it is applied to? Relate the
+$\alpha$-cut curve to the crisp result it converges to, and discuss whether the
+model's ambiguity tracks human ambiguity on the MTT triplets (F4).}
+
 \section{Threats to validity}
 \label{sec:threats}
 

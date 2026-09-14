@@ -19,25 +19,87 @@ small sets of human triplet judgements that do exist. Cite \cite{Ellis2002} and
 \section{Objectives}
 \label{sec:objectives}
 
-\todo{State the two questions the work answers, which are the two levels of the
-evaluation:
+\todo{State the general objective and the five specific objectives agreed with
+the supervisor:
 \begin{itemize}
-  \item \textbf{N1.} Does the representation contain musical information?
-        Measured with probing classifiers over frozen embeddings, following
-        \cite{Castellon2021} and \cite{Yuan2023}.
-  \item \textbf{N2.} Does the representation induce a good similarity graph?
-        Measured with retrieval, graph structure, robustness, and agreement with
-        the human triplet judgements of MagnaTagATune.
+  \item \textbf{General objective.} Study similarity-learning techniques for
+        music analysis and for building graphs of relationships between songs.
+  \item \textbf{O1.} Learn latent representations with siamese networks from
+        spectrograms, audio embeddings and acoustic descriptors.
+  \item \textbf{O2.} Compare them experimentally with classical classification
+        techniques and similarity measures, and with alternative deep models
+        (a purpose-built CNN, MERT).
+  \item \textbf{O3.} Build similarity graphs between songs and analyse their
+        structure.
+  \item \textbf{O4.} Model gradual or ambiguous musical relationships with
+        fuzzy logic.
+  \item \textbf{O5.} Evaluate everything on FMA and MagnaTagATune with
+        Recall@K, MAP and nDCG, plus the human judgements of MTT.
 \end{itemize}
-Add the question that motivates the whole study: does the genre proxy measure
-the same thing as perceived similarity?}
+Then state the two levels the evaluation is organised into (do not call probing
+a level: it is a diagnostic used inside N1, see below):
+\begin{itemize}
+  \item \textbf{N1 --- comparative.} Do different representations induce
+        significantly different similarity graphs, in quality and in
+        structure? This is the level of the siamese-input comparison, the
+        siamese-versus-classical comparison, and of asking whether the size of
+        the representation gap predicts the size of the graph gap.
+  \item \textbf{N2 --- absolute and of validity.} Does a representation induce
+        a good similarity graph on its own, against chance and against
+        published references, and do the conclusions drawn with the genre
+        proxy hold up against the human triplet judgements of MagnaTagATune?
+\end{itemize}
+Probing classifiers over frozen embeddings (following \cite{Castellon2021} and
+\cite{Yuan2023}) are a diagnostic reused inside N1, not a third level: they
+measure what a representation makes linearly decodable, which is a different
+question from whether its graph is good.}
+
+\section{Research questions}
+\label{sec:research-questions}
+
+\todo{State the main research question (PQ) and the six sub-questions
+(SQ1--SQ6) that operationalise it, taken from the research design:
+\begin{itemize}
+  \item \textbf{PQ.} Do differences between musical representations (siamese
+        networks with different inputs, a triplet network, a CNN, MERT,
+        classical techniques) translate into significant differences in the
+        structure and the quality of the resulting similarity graphs?
+  \item \textbf{SQ1 (N2).} Does each representation, on its own, induce a good
+        graph, against chance and against published references?
+  \item \textbf{SQ2 (N1).} Do graphs from different representations differ
+        significantly in quality and structure?
+  \item \textbf{SQ3 (N1).} Does the size of the difference between
+        representations predict the size of the difference between graphs?
+        Does the difference between models exceed the noise between seeds?
+  \item \textbf{SQ4 (N2).} Do the conclusions drawn with the genre proxy hold
+        up under the human judgements of MTT?
+  \item \textbf{SQ5 (N1) --- siamese focus.} Which siamese input (spectrogram,
+        audio embedding, acoustic descriptors) gives the best representations
+        and graphs? Do siamese networks outperform classical classification
+        techniques, classical similarity measures, the CNN and MERT?
+  \item \textbf{SQ6 (N1/N2) --- fuzzy.} Does modelling similarity and genre
+        membership gradually capture ambiguous musical relationships better
+        than the crisp approach? Does the gain depend on the representation?
+\end{itemize}
+State that SQ6 crosses both levels, comparing crisp and fuzzy graphs for each
+representation, and that the criterion used to answer PQ itself is stated in
+advance in the evaluation protocol chapter (Section \ref{sec:pq-criterion}).
+Add the question that motivates the whole ground-truth design: does the genre
+proxy measure the same thing as perceived similarity?}
 
 \section{Work plan}
 \label{sec:work-plan}
 
 \todo{Describe the plan as it was actually followed: a reproducible experiment
 framework first, then the MFCC baseline, then the graph and retrieval
-evaluation, then the ground truth work, and finally the trained models and MERT
-on the department server. Say which parts ran on a laptop and which needed a
-GPU. Reference Appendix \ref{Appendix:reproducibility} for the exact commands,
-and give the repository URL required by V.10: \repositorio.}
+evaluation, which froze the interface contract the two lines of work depend on.
+After that the two authors worked in parallel along two lines: one on learned
+representations and model evaluation (classical classifiers, the CNN, the
+siamese and triplet networks, MERT), the other on graph construction, the fuzzy
+block and results analysis (similarity measures, graph structure, fuzzy
+similarity and membership). The two lines converge for the model comparison and
+the writing of the results and discussion. Say which parts ran on a laptop and
+which needed a GPU: MERT and the trained networks need a GPU or a slow CPU run;
+the classical techniques and the fuzzy block need only a CPU. Reference Appendix
+\ref{Appendix:reproducibility} for the exact commands, and give the repository
+URL required by V.10: \repositorio.}

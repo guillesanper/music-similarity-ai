@@ -1,12 +1,39 @@
 \chapter{Evaluation protocol}
 \label{cap:protocol}
 
-\section{Two levels}
+\section{Two levels and a criterion for the main question}
 \label{sec:two-levels}
 
-\todo{N1, probing the representation, and N2, the quality of the similarity
-graph. Say why they are reported separately: they answer different questions,
-and a representation can do well on one and badly on the other.}
+\todo{N1, the comparative level (do graphs from different representations
+differ significantly in quality and structure?), and N2, the absolute and
+validity level (does a representation induce a good graph on its own, and do
+genre-based conclusions hold up against human judgements?). Say why they are
+reported separately: they answer different questions, and a representation can
+do well on one and badly on the other. Note that probing classifiers are a
+diagnostic used inside N1 (an explanatory variable for SQ3), not a third
+level.}
+
+\subsection{Criterion for answering the main question}
+\label{sec:pq-criterion}
+
+\todo{State, verbatim and before any result is seen, the criterion that decides
+the answer to PQ (``do differences between representations translate into
+significant differences in graph structure and quality?''):
+\begin{itemize}
+  \item \textbf{Yes}, if both hold: (1) at least one comparison between
+        representations of the declared family has a $\Delta$ whose 95\,\% CI
+        excludes 0 after the Holm correction, in some headline quality metric
+        \emph{and} some headline structure metric; and (2) the dissimilarity
+        between graphs of different representations exceeds the noise floor
+        measured between seeds of the same representation.
+  \item \textbf{Partially}, if only one of the two holds, or if it holds for
+        quality only or for structure only.
+  \item \textbf{No}, otherwise.
+\end{itemize}
+State that the answer is given separately for the FMA test gallery and for
+MTT, and that SQ5 (siamese inputs versus each other and versus classical
+techniques) and SQ6 (fuzzy versus crisp) are answered with the same
+statistical protocol, over their own declared comparisons.}
 
 \section{Retrieval}
 \label{sec:retrieval-protocol}
@@ -14,8 +41,13 @@ and a representation can do well on one and badly on the other.}
 \todo{Gallery, query protocol and the exact definitions. The gallery is always
 the whole corpus; \texttt{queries} only decides which queries the averages run
 over, and \texttt{test} is the headline protocol once a model has been trained
-on \texttt{training}. Give the formulas for P@k, R@k, AP@k and nDCG@k, binary
-and graded, including the denominator of AP@k. Describe the three exclusion
+on \texttt{training}. Give the formulas for R@k (raw and normalised by
+$\min(1, k / |\text{relevant}|)$), MAP, nDCG@k (binary and graded) and P@k,
+including the denominator of AP@k. State clearly which metrics are headline and
+which are secondary: \textbf{Recall@10 (raw and normalised), MAP and nDCG@10}
+are the headline quality metrics, together with agreement on the MTT triplets;
+\textbf{P@10 is kept as a secondary metric}, only for continuity with the
+regression figures of the archived repository. Describe the three exclusion
 variants: \texttt{dedup}, the headline one, where the near-duplicate partner of
 a query counts as the query itself and leaves both the ranking and the relevant
 set; \texttt{raw}, with no such treatment; and \texttt{artist\_filter}, which
@@ -61,6 +93,36 @@ reported next to its quality; ARI, NMI, modularity, components, clustering
 coefficient and silhouette. The k-occurrence distribution, its skewness,
 anti-hubs, and mutual proximity. Robustness as neighbour-set Jaccard@k and
 $\Delta$P@k under noise, gain, pitch shift, time stretch and cropping.}
+
+\section{Similarity measures and classical classifiers}
+\label{sec:similarity-measures-protocol}
+
+\todo{Describe the measures compared on the classical representations and on
+the best siamese model: cosine (canonical), Euclidean, Manhattan, Pearson
+correlation, Mahalanobis (with Ledoit-Wolf shrinkage) and symmetric KL between
+Gaussians for \texttt{gauss\_mfcc}. State that the siamese distance coincides
+with the canonical cosine measure in its own space. Describe how classical
+classifiers (kNN, logistic regression, SVM-RBF, random forest) are evaluated
+twice: as classifiers (accuracy, macro F1 on \texttt{fma\_test}) and, through
+their class-posterior vector, as graph generators alongside the learned
+representations.}
+
+\section{Fuzzy evaluation}
+\label{sec:fuzzy-protocol}
+
+\todo{Describe how the fuzzy block (F1--F4) is evaluated against its crisp
+counterpart, on \texttt{mfcc}, the best siamese model and \texttt{mert}: F1
+(fuzzy similarity graph) against retrieval ordered by membership degree, tie
+agreement and weighted structure metrics, across a curve of $\alpha$-cuts; F2
+(fuzzy inference), if confirmed by the supervisor, against cosine on
+\texttt{acoustic} and against \texttt{siamese\_desc}; F3 (fuzzy genre
+membership: fuzzy kNN and fuzzy c-means) against the crisp kNN and the
+classical classifiers, scored with the multi-label agreement (FMA sub-genres,
+MTT tags) and fuzzy ARI; F4 (model-versus-human ambiguity) as a Spearman
+correlation between the human vote margin and the fuzzy membership margin on
+the MTT triplets. State that every fuzzy parameter (the $\alpha$ of F1, the
+rule base and membership functions of F2) is fixed on the FMA validation split
+before touching test.}
 
 \section{Invariants}
 \label{sec:invariants}

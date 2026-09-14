@@ -6,20 +6,49 @@ Universidad Complutense de Madrid.
 A framework for music similarity experiments. The pipeline is one arrow:
 
 ```
-audio -> features -> embedding -> cosine similarity -> kNN graph -> evaluation
+audio -> features -> embedding -> similarity measure -> graph (crisp or fuzzy) -> evaluation
 ```
 
-and the evaluation has two levels:
+**Objective.** Study similarity-learning techniques for music analysis and for
+building graphs of relationships between songs, with **siamese neural networks**
+as the principal focus (O1): three siamese inputs — a log-mel spectrogram
+(`siamese_mel`), a frozen audio embedding (`siamese_emb`), and classical
+acoustic descriptors (`siamese_desc`) — plus a triplet network, a purpose-built
+CNN and MERT. These are compared experimentally (O2) against **classical
+classification techniques** (kNN, logistic regression, SVM, random forest, used
+both as classifiers and as graph generators) and **classical similarity
+measures** (Euclidean, Manhattan, Pearson correlation, Mahalanobis, symmetric
+KL divergence). The resulting similarity graphs are built and analysed (O3),
+including a **fuzzy block** that models graded, ambiguous musical relationships
+on top of any representation (O4). Everything is evaluated (O5) on FMA small
+and MagnaTagATune with **Recall@K, MAP and nDCG** as the headline quality
+metrics, plus agreement with MagnaTagATune's human similarity judgements.
 
-- **N1 — Does the embedding contain musical information?** Probing classifiers
-  over frozen embeddings, in the spirit of the MARBLE benchmark.
-- **N2 — Does the embedding induce a good similarity graph?** Retrieval with
-  multi-faceted relevance, agreement with human similarity judgements, graph
-  structure, robustness and generalisation.
+The main research question: do differences between representations (siamese
+networks with different inputs, the triplet network, the CNN, MERT, classical
+techniques) translate into significant differences in the **structure** and the
+**quality** of the resulting similarity graphs? The evaluation answers it at two
+levels:
 
-Both levels are run over the same embeddings, and the design is meant to grow to
-several models (MFCC, a CNN, siamese and triplet networks, MERT) and two corpora
-(FMA small for everything, MagnaTagATune for evaluation only).
+- **N1 — comparative.** Do graphs from different representations differ
+  significantly in quality and structure? This is the level of the
+  siamese-input comparison, siamese versus classical techniques, and of
+  relating the size of the representation gap to the size of the graph gap.
+- **N2 — absolute and of validity.** Does a representation induce a good
+  similarity graph on its own, against chance and published references, and do
+  conclusions drawn with the genre proxy hold up against MagnaTagATune's human
+  judgements?
+
+Probing classifiers over frozen embeddings are a **diagnostic** used inside N1,
+not a third level: they measure what a representation makes linearly
+decodable, not whether its graph is good. A fuzzy sub-question (does grading
+similarity and genre membership help, and does the gain depend on the
+representation?) cuts across both levels.
+
+Two students work along two parallel lines after the shared baseline: one on
+representation learning and model evaluation, the other on graph construction,
+fuzzy techniques and results analysis. Section 10 has the full phase table and
+the diagram of the two lines.
 
 **What is shipped today is the MFCC baseline**: MFCC features, cosine similarity,
 a kNN graph and its retrieval evaluation, over FMA small, with a random embedding
@@ -57,7 +86,11 @@ table or a figure of the report.
   unpacked). MagnaTagATune, which arrives in phase R5, needs about 3 GB more.
 - **No GPU is needed** for the MFCC baseline, the graph, the retrieval
   evaluation, the structure analysis or the triplet agreement: all of it runs on
-  CPU. A GPU is needed only for the trained models and MERT (section 4).
+  CPU. Looking ahead to later phases: the classical techniques (acoustic
+  descriptors, the Gaussian timbre model, the classical classifiers) and the
+  fuzzy block also run on CPU only, in minutes; a GPU, or a slow CPU fallback,
+  is needed only for the trained networks (the siamese, triplet and CNN
+  models) and for MERT (section 4).
 - **No FFmpeg is needed**: `soundfile >= 0.12` bundles `libsndfile` with MP3
   support, which is enough for the MP3 files of this corpus. Install it only as
   a safety net if feature extraction reports files it cannot decode:
@@ -226,10 +259,21 @@ python -m musicsim registries                                            # what 
 |---|---|---|---|---|
 | **e01** Retrieval baseline | `python -m musicsim run configs/experiments/e01_mfcc_baseline.yaml` | `configs/experiments/e01_mfcc_baseline.yaml` | `metrics/retrieval.csv`, `metrics/retrieval_per_genre.csv` | Section 6.1, main retrieval table |
 
-Later phases add one row each, and the configuration file is written by the phase
-that can run it: e02 PCA ablation (R3), e03 graph structure (R4), e04 human
-triplets (R5), e05 probing (R6), e06 graph variants and e07 robustness (R7), e08
-model comparison (R10). Section 10 has the full table.
+Later phases add one row each, and the configuration file is written by the
+phase that can run it:
+
+- **e02** PCA ablation (R3)
+- **e03** graph structure (R4)
+- **e04** human triplets (R5)
+- **e05** classical classifiers and probing over every representation (R6)
+- **e06** graph variants (R7)
+- **e07** robustness (R7)
+- **e08** model comparison: every representation, Holm-corrected (R10)
+- **e09** representation-to-graph link, the noise floor (R10)
+- **e10** similarity measures (R12)
+- **e11** fuzzy block (R11)
+
+Section 10 has the full phase table.
 
 To run the experiment with a different model, change the extractor; nothing else
 moves:
@@ -356,20 +400,36 @@ impose, and the checklist to run before handing anything in.
 
 The framework is built phase by phase. Each phase ends green, with its own
 acceptance criterion, and adds its draft of the corresponding report section.
+After the shared baseline (R1-R3), the work splits into two parallel lines,
+one per student, and converges again for the final comparison:
 
-| Phase | Deliverable | State |
-|---|---|---|
-| **R0** | Scaffold: package core, configuration, registries, run log, tests, report skeleton, docs | **done** |
-| R1 | Datasets: downloads with checksums, FMA and MTT indices, triplet constraints | pending |
-| R2 | Features: audio, `mfcc` and `random` extractors, cache, embeddings | pending |
-| R3 | Graph and retrieval: kNN, duplicates, relevance, metrics, bootstrap; e01, e02 | pending |
-| R4 | Structure: communities, hubness, plots; e03 | pending |
-| R5 | Ground truth: triplets, MTT facets, graded genres; e04 | pending |
-| R6 | Probing; e05 | pending |
-| R7 | Graph variants and robustness; e06, e07 | pending |
-| R8 | Trained models on the server: CNN, siamese, triplet | pending |
-| R9 | MERT on the server | pending |
-| R10 | Comparison, export and final writing; e08 | pending |
+```
+Joint:      R1 -> R2 -> R3   (baseline; freezes the interface both lines build on)
+                       |
+            +----------+-----------+
+Student 1:  R5 -> R6 -> R8 -> R9        Student 2:  R4 -> R12 -> R11 -> R7
+(representation learning                (graph construction, fuzzy
+ and model evaluation)                   techniques, results analysis)
+            +----------+-----------+
+                       |
+Joint:               R10   (e08, e09, model comparison, memoria)
+```
+
+| Phase | Student | Deliverable | State |
+|---|---|---|---|
+| **R0** | — | Scaffold: package core, configuration, registries, run log, tests, report skeleton, docs | **done** |
+| R1 | both | Datasets: downloads with checksums, FMA and MTT indices, triplet constraints | pending |
+| R2 | both | Features: audio, `mfcc` and `random` extractors, cache, embeddings | pending |
+| R3 | both | Graph and retrieval: kNN, duplicates, relevance, R@K/MAP/nDCG/P@K, bootstrap, multi-representation runner, the two-line interface contract; e01, e02 | pending |
+| R4 | Student 2 | Structure: communities, hubness, graph comparison and export, plots; e03 | pending |
+| R5 | Student 1 | Ground truth: triplets, MTT facets, graded genres; e04 | pending |
+| R6 | Student 1 | Classical techniques: `acoustic`, `gauss_mfcc`, classical classifiers, `posterior_*`, probing; e05 | pending |
+| R7 | Student 2 | Graph variants and robustness; e06, e07 | pending |
+| R8 | Student 1 | Siamese and triplet networks, the CNN classifier, on the server | pending |
+| R9 | Student 1 | MERT and `siamese_emb`, on the server | pending |
+| R12 | Student 2 | Similarity measures; e10 | pending |
+| R11 | Student 2 | Fuzzy block; e11 | pending |
+| R10 | both | Model comparison, representation-to-graph link, export and final writing; e08, e09 | pending |
 
 Each phase adds its own configuration files, so `configs/` is a list of what can
 be run rather than a wish list. A stage that is not implemented yet says so, and

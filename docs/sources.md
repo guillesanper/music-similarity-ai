@@ -215,6 +215,143 @@ Report section 4.6, `musicsim/training/losses.py`.
 
 ---
 
+## Classical techniques and similarity measures
+
+### `Tzanetakis2002` — Musical Genre Classification of Audio Signals `[to read]`
+
+*What it gives.* The classical acoustic descriptor set beyond MFCC: chroma,
+spectral contrast, centroid, bandwidth, rolloff, zero-crossing rate, RMS
+energy and tempo, pooled as mean and standard deviation. This is the basis of
+the `acoustic` extractor.
+
+*Where it is used.* `musicsim/extractors/acoustic.py` (phase R6), report
+sections 2 (classical techniques) and 4 (methods).
+
+---
+
+### `Mandel2005` — Song-Level Features and Support Vector Machines for Music Classification `[to read]`
+
+*What it gives.* The single-Gaussian-per-song model over MFCC frames (mean
+plus full covariance), the basis of `gauss_mfcc`, and its comparison via
+symmetric KL divergence.
+
+*Where it is used.* `musicsim/extractors/gauss_mfcc.py`,
+`musicsim/similarity.py` (phase R6/R12), report sections 2 and 4.
+
+---
+
+### `LedoitWolf2004` — A Well-Conditioned Estimator for Large-Dimensional Covariance Matrices `[to read]`
+
+*What it gives.* The shrinkage estimator used to regularise the covariance
+matrix for the Mahalanobis similarity measure on `mfcc` and `acoustic`.
+
+*Where it is used.* `musicsim/similarity.py` (phase R12), report section 4
+(similarity measures).
+
+---
+
+## Fuzzy modelling
+
+All entries in this section are `[to read]`: they must be read in full and
+verified before the report cites them (V.11), per the research design (Part
+C.6).
+
+### `Zadeh1965` — Fuzzy Sets `[to read]`
+
+*What it gives.* The foundational definition of graded set membership that
+the whole fuzzy block (F1–F4) builds on.
+
+*Where it is used.* `musicsim/fuzzy/*` (phase R11), report section 2 (fuzzy
+modelling) and section 4.
+
+---
+
+### `Rosenfeld1975` — Fuzzy Graphs `[to read]`
+
+*What it gives.* Fuzzy graphs, i.e. graphs with graded edge membership instead
+of a crisp 0/1 edge, the formal object F1 constructs.
+
+*Where it is used.* `musicsim/fuzzy/graph.py` (F1, phase R11), report
+sections 2 and 4.
+
+---
+
+### `McInnes2018` — UMAP: Uniform Manifold Approximation and Projection `[to read]`
+
+*What it gives.* Fuzzy simplicial sets as a related construction for local,
+calibrated membership from a distance, cited as related work for the F1
+membership function ($\rho_i$, $\sigma_i$ calibration).
+
+*Where it is used.* Report section 2 (fuzzy modelling), as related work only;
+not a dependency of `musicsim/fuzzy/graph.py`.
+
+---
+
+### `Mamdani1975` — An Experiment in Linguistic Synthesis with a Fuzzy Logic Controller `[to read]`
+
+*What it gives.* Mamdani-style fuzzy inference (min/max composition,
+centroid defuzzification), one of the two inference schemes F2 may use.
+
+*Where it is used.* `musicsim/fuzzy/inference.py` (F2, phase R11, core only if
+confirmed by the supervisor), report sections 2 and 4.
+
+---
+
+### `Takagi1985` — Fuzzy Identification of Systems and Its Applications to Modeling and Control `[to read]`
+
+*What it gives.* Takagi-Sugeno (zero-order) fuzzy inference, the second
+inference scheme F2 may use.
+
+*Where it is used.* `musicsim/fuzzy/inference.py` (F2, phase R11), report
+sections 2 and 4.
+
+---
+
+### `Keller1985` — A Fuzzy K-Nearest Neighbor Algorithm `[to read]`
+
+*What it gives.* Fuzzy kNN classification, the basis of F3a: graded genre
+membership from the similarity graph.
+
+*Where it is used.* `musicsim/fuzzy/knn.py` (F3a, phase R11), report sections
+2 and 4.
+
+---
+
+### `Bezdek1981` — Pattern Recognition with Fuzzy Objective Function Algorithms `[to read]`
+
+*What it gives.* Fuzzy c-means clustering, the basis of F3b: overlapping
+genre communities over the embeddings.
+
+*Where it is used.* `musicsim/fuzzy/cmeans.py` (F3b, phase R11), report
+sections 2 and 4.
+
+---
+
+### `Hullermeier2012` — The Rand Index and Beyond `[to read]`
+
+*What it gives.* The fuzzy Rand index used to score F3 against multi-label
+ground truth, and as the fuzzy analogue of the crisp ARI used for Louvain
+communities.
+
+*Where it is used.* `musicsim/evaluation/fuzzy_metrics.py` (phase R11), report
+sections 4 and 6 (fuzzy modelling).
+
+---
+
+## Representation comparison
+
+### `Kornblith2019` — Similarity of Neural Network Representations Revisited `[to read]`
+
+*What it gives.* Linear CKA (and, as a check, CKA with an RBF kernel), used to
+relate the distance between representations to the distance between the
+graphs they induce (SQ3, the noise-floor and dose-response analysis).
+
+*Where it is used.* `musicsim/evaluation/representation.py`,
+`musicsim/evaluation/link.py` (phase R9/R10), report sections 2 and 6
+(representation gap and graph gap).
+
+---
+
 ## Tools
 
 Cited because V.11 requires third-party software to be credited and its licence
@@ -252,3 +389,12 @@ them.
    second-hand.
 4. Settle whether "academic use, no explicit licence" is the wording the
    supervisor wants for MagnaTagATune in the report.
+5. Read and verify the twelve classical-technique and fuzzy-modelling entries
+   added for the research design v3 (`Tzanetakis2002` through `Kornblith2019`)
+   before the sections that cite them (report sections 2, 4 and 6) are written
+   past `\todo` stage.
+6. Confirm exact venue, year and author list for `Mandel2005`,
+   `LedoitWolf2004`, `Mamdani1975`, `Takagi1985`, `Keller1985` and
+   `Hullermeier2012`: they are cited here from memory of the standard
+   reference and need a primary-source check before entering
+   `report/bibliography.bib`.

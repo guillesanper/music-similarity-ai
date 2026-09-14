@@ -32,5 +32,9 @@ file, outputs, and the figure or table of this report it feeds.}
 \label{sec:appendix-hardware}
 
 \todo{The laptop the CPU experiments ran on and the department server used for
-the trained models and MERT: CPU, RAM, GPU, operating system, and the wall-clock
-time of the expensive stages.}
+the trained models and MERT: CPU, RAM, GPU, operating system, and the
+wall-clock time of the expensive stages. State plainly which stages need a
+GPU (or a slow CPU run) and which do not: the siamese and triplet networks,
+the CNN classifier and MERT need a GPU or a slow CPU fallback; the classical
+techniques (MFCC, acoustic descriptors, the Gaussian timbre model, the
+classical classifiers) and the fuzzy block run on CPU only, in minutes.}

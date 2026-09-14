@@ -2,15 +2,29 @@
 
 The pipeline is one arrow::
 
-    audio -> features -> embedding -> cosine similarity -> kNN graph -> evaluation
+    audio -> features -> embedding -> similarity measure -> graph (crisp or fuzzy) -> evaluation
 
-and the evaluation has two levels:
+Siamese networks over three kinds of input (spectrogram, audio embedding,
+acoustic descriptors), a triplet network, a CNN classifier and MERT are
+compared against classical techniques: MFCC, acoustic descriptors, a Gaussian
+timbre model, classical classifiers used as graph generators, and several
+similarity measures. A fuzzy block models graded similarity and genre
+membership on top of any representation.
 
-N1  Does the embedding contain musical information? Probing classifiers on
-    genre, sub-genre and tag tasks, in the spirit of the MARBLE benchmark.
-N2  Does the embedding induce a good similarity graph? Retrieval with
-    multi-faceted relevance, agreement with human triplet judgements, graph
-    structure, robustness and generalisation.
+The evaluation has two levels, plus a diagnostic that is not a level:
+
+N1  Do different representations induce significantly different graphs, in
+    quality and structure? Comparative questions: which siamese input works
+    best, how siamese networks compare with classical techniques, and whether
+    the size of the representation gap predicts the size of the graph gap.
+N2  Does a representation induce a good similarity graph on its own, against
+    chance and against published references, and do the conclusions drawn
+    with the genre proxy hold up against the human triplet judgements of
+    MagnaTagATune?
+
+Probing classifiers over frozen embeddings are a diagnostic used inside N1,
+not a third level: they measure what a representation makes linearly
+decodable, which is a different question from graph quality.
 
 Design principles, in one line each:
 

@@ -5,56 +5,82 @@
 % report/figures/generated/, which `musicsim export` refreshes. They are
 % versioned on purpose, so that the report compiles without re-running any
 % experiment.
+%
+% Section order follows the question-to-experiment traceability table of the
+% research design (Part C.12): the siamese-network section, the principal focus
+% of the work (T2), comes first, then the rest in the order the questions are
+% introduced.
 
 \chapter{Results}
 \label{cap:results}
 
-\section{Retrieval baseline}
-\label{sec:results-retrieval}
+\section{Siamese networks}
+\label{sec:results-siamese}
 
-\todo{Experiment e01. MFCC against the random control on FMA, for the three
-exclusion variants and both query protocols, with intervals by query and by
-artist. Add the per-genre breakdown.}
+\todo{SQ5, the principal focus of the work. Experiments e05, e08, e10. Report,
+in order: (1) retrieval and structure for each siamese input
+(\texttt{siamese\_mel}, \texttt{siamese\_emb}, \texttt{siamese\_desc}) and for
+\texttt{triplet\_mel}, with parameter counts; (2) the gain of each siamese
+network over its own raw input (\texttt{siamese\_emb} against \texttt{mert},
+\texttt{siamese\_desc} against \texttt{acoustic}) as the headline SQ5 result;
+(3) siamese networks against the classical block (\texttt{mfcc},
+\texttt{acoustic}, \texttt{gauss\_mfcc}+KL, best \texttt{posterior\_<clf>}) and
+against the CNN; (4) the effect of the similarity measure (e10) on the
+classical representations and on the best siamese model; (5) classifier
+accuracy and macro F1 of the classical classifiers on \texttt{fma\_test}. Every
+comparison follows the Holm-corrected family declared in the evaluation
+protocol.}
 
-\section{Dimensionality}
-\label{sec:results-pca}
+\section{Absolute quality}
+\label{sec:results-absolute}
 
-\todo{Experiment e02. Paired differences against the untouched 80-dimensional
-embedding, and the explained-variance curve.}
-
-\section{Graph structure}
-\label{sec:results-structure}
-
-\todo{Experiment e03. Communities against genres, the size of the giant
-component, the k-occurrence distribution and the hubs.}
-
-\section{Agreement with human judgements}
-\label{sec:results-triplets}
-
-\todo{Experiment e04. The share of satisfied constraints, with the reference
-points of Section \ref{sec:triplet-protocol}, and the faceted relevance results
-on MTT.}
-
-\section{Probing}
-\label{sec:results-probes}
-
-\todo{Experiment e05. Genre and sub-genre on FMA, top-50 tags on MTT, against
-the published MFCC figures of \cite{Castellon2021}.}
-
-\section{Graph variants}
-\label{sec:results-variants}
-
-\todo{Experiment e06. kNN against mutual kNN against the $\varepsilon$
-threshold, with and without mutual proximity.}
-
-\section{Robustness}
-\label{sec:results-robustness}
-
-\todo{Experiment e07. Neighbour stability under each perturbation.}
+\todo{SQ1. Experiments e01, e02, e03, e04, e07. MFCC against the random
+control on FMA, for the three exclusion variants and both query protocols,
+with intervals by query and by artist, and the per-genre breakdown (e01);
+paired differences under PCA against the untouched embedding (e02); the
+structural profile of the graph: communities against genres, giant component,
+k-occurrence distribution and hubs (e03); agreement with the MTT triplets
+against the reference points of the evaluation protocol, and the faceted
+relevance results on MTT (e04); robustness of the neighbour sets under
+perturbation (e07).}
 
 \section{Model comparison}
 \label{sec:results-comparison}
 
-\todo{Experiment e08. The master table: every model against every evaluation,
-each difference paired against the MFCC baseline, and FMA to MTT as the
-out-of-distribution check.}
+\todo{SQ2. Experiment e08. The master table: every representation, every
+seed, against every headline metric, with Holm-corrected paired differences and
+a forest plot, on \texttt{fma\_test}, \texttt{mtt\_all} and
+\texttt{mtt\_triplets}.}
+
+\section{Representation gap and graph gap}
+\label{sec:results-link}
+
+\todo{SQ3. Experiment e09. The noise floor: Jaccard@10 and CKA between seeds of
+the same model against the same quantities between different models. The
+dose-response scatter of $1-\text{CKA}$ against $1-\text{Jaccard@10}$ over the
+$\approx$45 points of Part C.9, with the Mantel test. The descriptive
+comparison of probe score (e05) against graph quality and structure.}
+
+\section{Fuzzy modelling}
+\label{sec:results-fuzzy}
+
+\todo{SQ6. Experiment e11. Crisp against fuzzy graphs for \texttt{mfcc}, the
+best siamese model and \texttt{mert}: retrieval ordered by membership degree,
+the curve of metrics across $\alpha$-cuts, fuzzy ARI against the multi-label
+ground truth compared with Louvain's ARI, the model-versus-human ambiguity
+correlation (F4), and, if F2 is in scope, the fitted rule base.}
+
+\section{Proxy versus perception}
+\label{sec:results-proxy}
+
+\todo{SQ4. Experiments e04, e08. Kendall $\tau$ between the genre-based and the
+human-judgement-based rankings of the representations, and whether the SQ2
+conclusions drawn on FMA survive on MTT.}
+
+\section{Sensitivity}
+\label{sec:results-sensitivity}
+
+\todo{Robustness questions. Experiments e06, e07. kNN against mutual kNN
+against the $\varepsilon$ threshold, with and without mutual proximity (e06);
+neighbour stability under each perturbation (e07); state whether the sign of
+the headline deltas changes under any crisp graph variant.}

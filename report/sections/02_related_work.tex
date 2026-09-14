@@ -4,10 +4,27 @@
 \section{Audio representations for music}
 \label{sec:representations}
 
-\todo{From hand-crafted descriptors to learned ones: MFCCs and their pooling,
-convolutional tagging networks, metric learning with contrastive
-\cite{Hadsell2006} and triplet \cite{Schroff2015} losses, and self-supervised
+\todo{From hand-crafted descriptors to learned ones, with the siamese focus of
+this work (T2) stated up front: MFCCs and their pooling, the broader family of
+classical acoustic descriptors (Tzanetakis and Cook 2002, \todo{cite:
+Tzanetakis2002}: chroma, spectral contrast, centroid, bandwidth, rolloff, ZCR,
+RMS, tempo), the single-Gaussian timbre model compared with symmetric KL
+divergence (Mandel and Ellis 2005, \todo{cite: Mandel2005}), convolutional
+tagging networks, metric learning with contrastive \cite{Hadsell2006} and
+triplet \cite{Schroff2015} losses over three kinds of siamese input
+(spectrogram, frozen audio embedding, acoustic descriptors), and self-supervised
 models such as MERT \cite{Li2023}.}
+
+\section{Classical classification and similarity measures}
+\label{sec:classical-techniques}
+
+\todo{Classical classifiers (kNN, logistic regression, SVM, random forest) used
+both to classify genre directly and, through their posterior probabilities, as
+a representation for graph construction. Classical similarity measures beyond
+cosine: Euclidean, Manhattan, Pearson correlation, Mahalanobis with
+regularised (Ledoit-Wolf) covariance, and symmetric KL divergence between
+Gaussians. This is the ``alternative classification techniques'' half of the
+title.}
 
 \section{Evaluating representations: probing benchmarks}
 \label{sec:probing-benchmarks}
@@ -32,11 +49,33 @@ derivation and the comparison of adaptation methods of Wolff et al.
 
 \todo{Nearest-neighbour graphs, mutual kNN, the hubness phenomenon in
 high-dimensional spaces and mutual proximity as a remedy, community detection
-and what modularity does and does not say about a music catalogue.}
+and what modularity does and does not say about a music catalogue. Comparing
+representations directly: linear CKA (Kornblith et al. 2019, \todo{cite:
+Kornblith2019}) as a way to relate representation similarity to graph
+similarity, used in the noise-floor and dose-response analysis of SQ3.}
+
+\section{Fuzzy modelling of musical relationships}
+\label{sec:fuzzy-related-work}
+
+\todo{Fuzzy set theory (Zadeh 1965, \todo{cite: Zadeh1965}) and fuzzy graphs
+(Rosenfeld 1975, \todo{cite: Rosenfeld1975}) as a way to model graded
+similarity instead of a crisp yes/no neighbourhood; fuzzy simplicial sets as
+used by UMAP (McInnes et al. 2018, \todo{cite: McInnes2018}) as a related
+construction. Fuzzy inference systems, Mamdani (Mamdani and Assilian 1975,
+\todo{cite: Mamdani1975}) and Takagi-Sugeno (Takagi and Sugeno 1985, \todo{cite:
+Takagi1985}), for interpretable, rule-based similarity. Fuzzy k-nearest-neighbour
+classification (Keller, Gray and Givens 1985, \todo{cite: Keller1985}) and fuzzy
+c-means clustering (Bezdek 1981, \todo{cite: Bezdek1981}) for graded genre
+membership, evaluated against multi-label ground truth with the fuzzy
+Rand index (Hüllermeier et al. 2012, \todo{cite: Hullermeier2012}). State that
+every fuzzy reference is read in full and promoted from \texttt{[to read]} in
+\texttt{docs/sources.md} before the report leans on it (V.11).}
 
 \section{Positioning}
 \label{sec:positioning}
 
-\todo{One paragraph saying what this work adds: it puts the two levels side by
-side on the same embeddings, and it measures the genre proxy against human
-judgements instead of assuming it.}
+\todo{One paragraph saying what this work adds: it puts siamese networks with
+three kinds of input, classical classification and similarity techniques, and
+a fuzzy block, side by side on the same embeddings and the same graphs, at both
+the comparative and the absolute level, and it measures the genre proxy against
+human judgements instead of assuming it.}

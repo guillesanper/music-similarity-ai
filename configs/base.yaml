@@ -48,7 +48,10 @@ graph:
 
 # --- Retrieval evaluation ----------------------------------------------------
 retrieval:
-  ks: [1, 5, 10, 20]          # k = 10 is the headline number
+  # Headline quality metrics (see report section 5): Recall@10 (raw and
+  # normalised), MAP and nDCG@10. P@10 is kept for continuity with the
+  # archived repository's regression figures, but it is a secondary metric.
+  ks: [1, 5, 10, 20]          # k = 10 is the headline neighbourhood size
   queries: all                # all | test
   # dedup is the headline variant: the near-duplicate partner of a query counts
   # as the query itself, so it leaves both the ranking and the relevant set.

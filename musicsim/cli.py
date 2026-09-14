@@ -61,8 +61,10 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="musicsim",
         description=(
-            "Music similarity experiments: audio to embeddings to similarity graphs, "
-            "evaluated with retrieval, structure, probing and human triplet judgements."
+            "Music similarity experiments: audio to embeddings to similarity graphs "
+            "(crisp and fuzzy), comparing siamese networks, classical techniques and "
+            "MERT, evaluated with retrieval, structure, probing and human triplet "
+            "judgements."
         ),
         epilog=(
             "Every experiment is one YAML file under configs/experiments/. "

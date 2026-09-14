@@ -19,17 +19,24 @@
 
 \todo{Write the half-page abstract once the results are in. It should
 say, in this order: (1) that musical similarity has no operational
-definition and that the literature substitutes genre for it; (2) that
-this work builds a similarity graph out of audio representations and
-evaluates it at two levels, probing the representation and measuring the
-quality of the graph; (3) which models and which corpora are used (MFCC,
-a CNN, siamese and triplet networks, MERT; FMA small and MagnaTagATune);
-(4) the headline result, including how far the rankings agree with human
-similarity judgements; and (5) the conclusion.}
+definition and that the literature substitutes genre for it; (2) the
+general objective, studying similarity-learning techniques for music
+analysis and graph construction, with siamese networks over three kinds
+of input (spectrograms, audio embeddings, acoustic descriptors) as the
+principal focus, compared against classical classification and
+similarity techniques and against a fuzzy block for gradual relationships
+(O1--O4); (3) that the graphs are evaluated at a comparative level
+(do representations differ significantly?) and an absolute level (is
+each graph good on its own, and does it agree with human judgements?),
+with FMA and MagnaTagATune, using Recall@K, MAP and nDCG (O5); (4) the
+headline result, including how far the rankings agree with human
+similarity judgements and whether the fuzzy block helps; and (5) the
+conclusion, answering the main research question stated in Chapter
+\ref{cap:introduction}.}
 
 \section*{Keywords}
 
 \noindent \todo{At most 10 keywords, separated by commas. Proposal: music
-information retrieval, music similarity, audio embeddings, similarity
-graphs, nearest neighbours, evaluation, MFCC, metric learning, human
-similarity judgements.}
+information retrieval, music similarity, siamese networks, similarity
+graphs, metric learning, classical classification, fuzzy logic,
+evaluation, human similarity judgements, MERT.}

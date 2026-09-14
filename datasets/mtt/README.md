@@ -92,6 +92,30 @@ These reproduce the published counts of Wolff et al. (2012) exactly. An
 assertion failure here means the CSV changed, and every triplet result in the
 report would be invalid, so the failure is deliberate rather than a warning.
 
+## 3b. The full index
+
+`python -m musicsim index --dataset mtt` (phase R1) builds `index.csv` over
+**all 25 863 clips**, not only the 993 involved in a triplet constraint, with
+the standard split and a boolean `in_triplets` column:
+
+```
+datasets/mtt/index.csv   item_id, path, artist_id, split, in_triplets
+```
+
+The three uses of this index, each covering a different part of the corpus:
+
+- **Human-judgement evaluation** (`mtt_triplets`, 993 clips, `in_triplets`):
+  agreement with the constraints derived below (SQ4, phase R5, experiment e04)
+  and the model-versus-human ambiguity analysis of the fuzzy block (F4, phase
+  R11, experiment e11).
+- **Multi-label genre membership** (all 25 863 clips, the tag columns of
+  `annotations_final.csv`): ground truth for the fuzzy genre-membership
+  evaluation (F3, phase R11).
+- **Out-of-distribution gallery** (`mtt_all`, all 25 863 clips): no model is
+  trained on MTT, so the whole index is the titular out-of-distribution
+  gallery for structure, retrieval and fuzzy evaluation, distinct from
+  `mtt_triplets`.
+
 ## 4. How the constraints are derived
 
 Each row of `comparisons_final.csv` presents a triplet and records the votes of
