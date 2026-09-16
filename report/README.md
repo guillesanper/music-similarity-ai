@@ -10,8 +10,60 @@ The master file is `main.tex`.
 
 ## 1. Building it
 
-There is no LaTeX installation on the development laptop, so **Overleaf is the
-default route**, and a local build is the alternative.
+**VS Code with the LaTeX Workshop extension is the default route** for local
+work. Overleaf remains a no-install fallback (useful on a machine without a
+LaTeX distribution, or to share a read-only preview).
+
+### Locally, with VS Code + LaTeX Workshop
+
+1. Install a LaTeX distribution — on Windows, MiKTeX:
+
+   ```powershell
+   winget install --id MiKTeX.MiKTeX -e
+   ```
+
+2. Install the [LaTeX Workshop](https://marketplace.visualstudio.com/items?itemName=James-Yu.latex-workshop)
+   extension in VS Code.
+3. Open the **repository root** (not just `report/`) in VS Code, so paths in
+   `.vscode/settings.json` and the extension's file-watcher resolve correctly.
+4. Open `report/main.tex`. LaTeX Workshop autodetects it as buildable, but
+   because it is not the file VS Code has focused by default when another file
+   is open, either:
+   - build from `main.tex` itself (open the tab, then use the steps below), or
+   - set it once as the fixed root in `report/.vscode/settings.json`, so any
+     `sections/*.tex` file builds the whole report too:
+
+     ```json
+     {
+       "latex-workshop.latex.rootFile.doNotUseSubFile": true,
+       "latex-workshop.latex.rootFile.forceRootFile": "report/main.tex"
+     }
+     ```
+
+5. Build with the green play button in the editor toolbar, the **TeX** sidebar
+   icon → *Build LaTeX project*, or `Ctrl+Alt+B`. LaTeX Workshop runs its
+   default `latexmk (pdflatex)` recipe, which chains pdfLaTeX → BibTeX →
+   pdfLaTeX ×2 on its own — the same passes Overleaf runs.
+6. View the PDF with `Ctrl+Alt+V` (opens the built-in SyncTeX-linked viewer, so
+   `Ctrl`+click in the PDF jumps to the source line and vice versa).
+7. On error, open the **PROBLEMS** panel or the *TeX* output channel in the
+   integrated terminal; LaTeX Workshop parses the log and lists the failing
+   line directly.
+
+MiKTeX prompts to install any missing package the first time it is needed;
+accept the prompt (or set MiKTeX to auto-install packages in its own settings)
+rather than installing packages by hand.
+
+To clean up auxiliary files, run *TeX* sidebar → *Clean up auxiliary files*, or:
+
+```powershell
+cd report
+latexmk -C
+```
+
+To build a single chapter while writing, uncomment the matching
+`\compilaCapitulo{...}` line in `config.tex` — a full build of the whole report
+is slow enough to break concentration.
 
 ### Overleaf
 
@@ -26,25 +78,6 @@ default route**, and a local build is the alternative.
 Everything the project needs is inside `report/`: the template style files, the
 crest images, the bibliography and the generated figures and tables. Nothing
 outside that directory has to be uploaded.
-
-### Locally, with MiKTeX or TeX Live
-
-```powershell
-winget install --id MiKTeX.MiKTeX -e     # once, on Windows
-cd report
-latexmk -pdf main.tex
-```
-
-`latexmk` resolves the BibTeX passes and the cross-references on its own; MiKTeX
-downloads any missing package the first time. To clean up:
-
-```powershell
-latexmk -C
-```
-
-To build a single chapter while writing, uncomment the matching
-`\compilaCapitulo{...}` line in `config.tex` — a full build of the whole report
-is slow enough to break concentration.
 
 ---
 

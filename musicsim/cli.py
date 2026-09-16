@@ -168,6 +168,8 @@ def _cmd_run(args: argparse.Namespace, parser: argparse.ArgumentParser) -> int:
 
 
 def _cmd_stage(args: argparse.Namespace, parser: argparse.ArgumentParser) -> int:
+    if args.stage in {"download", "index"}:
+        return _cmd_dataset_stage(args, parser)
     if getattr(args, "config", None) is not None:
         _load(args, parser, args.config)
     parser.error(
@@ -175,6 +177,46 @@ def _cmd_stage(args: argparse.Namespace, parser: argparse.ArgumentParser) -> int
         "See the phase table in README.md."
     )
     return 2  # unreachable: parser.error exits with code 2
+
+
+def _cmd_dataset_stage(args: argparse.Namespace, parser: argparse.ArgumentParser) -> int:
+    """Handle ``download`` and ``index``: resolve a dataset, dispatch to its class."""
+    config = _resolve_dataset_config(args, parser)
+    load_plugins()
+    directory = config.require("dataset.directory")
+    try:
+        dataset_cls = DATASETS.get(directory)
+    except KeyError as exc:
+        parser.error(str(exc))
+        raise  # unreachable: parser.error exits
+
+    dataset = dataset_cls(config)
+    if args.stage == "download":
+        dataset.download()
+        sys.stdout.write(
+            f"downloaded and verified '{dataset.name}' under "
+            f"{paths.relative_to_repo(dataset.raw_dir)}\n"
+        )
+        return 0
+
+    index_path = dataset.write_index()
+    with index_path.open(encoding="utf-8") as handle:
+        n_items = sum(1 for _ in handle) - 1  # minus the header row
+    sys.stdout.write(f"wrote {paths.relative_to_repo(index_path)} ({n_items} items)\n")
+    return 0
+
+
+def _resolve_dataset_config(args: argparse.Namespace, parser: argparse.ArgumentParser) -> Config:
+    """A dataset configuration from ``--config``, or from ``--dataset`` by convention."""
+    if getattr(args, "config", None) is not None:
+        return _load(args, parser, args.config)
+    if getattr(args, "dataset", None) is not None:
+        config_path = paths.REPO_ROOT / "configs" / "datasets" / f"{args.dataset}.yaml"
+        if not config_path.is_file():
+            parser.error(f"no configuration for dataset '{args.dataset}': {config_path} not found")
+        return _load(args, parser, config_path)
+    parser.error(f"'{args.stage}' needs either --config or --dataset")
+    raise AssertionError  # unreachable: parser.error exits
 
 
 def _cmd_show(args: argparse.Namespace, parser: argparse.ArgumentParser) -> int:

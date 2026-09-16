@@ -10,6 +10,7 @@ datasets/*/*.zip
 datasets/*/*.zip.[0-9][0-9][0-9]
 datasets/*/*.tar
 datasets/*/*.tar.gz
+datasets/*/index.csv
 
 # --- Generated artefacts and run outputs ---------------------------------
 outputs/

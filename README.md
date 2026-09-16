@@ -222,7 +222,7 @@ criterion and adds its draft of the corresponding report section.
 | Stage | Phase | Deliverable | State |
 |---|---|---|---|
 | — | **P0** | Scaffold: configuration, paths, registries, run log, CLI, tests, report skeleton | **done** |
-| **S1 Baselines** | P1 | FMA download with checksums and item index | in progress |
+| **S1 Baselines** | P1 | FMA download with checksums and item index | **done** |
 | | P2 | Audio, log-mel cache, `mfcc` and `random` extractors, embeddings | pending |
 | | P3 | kNN graph, retrieval metrics (Recall@K, MAP, NDCG), bootstrap; e01, e02 | pending |
 | **S2 Graphs** | P4-P7 | Structure and hubness, graph variants and robustness, similarity measures, fuzzy graphs and memberships | pending |
