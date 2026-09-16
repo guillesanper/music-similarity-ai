@@ -18,23 +18,27 @@ ignored by git.
 | Licence, audio | Per track, chosen by each artist |
 | Checksums | Published in the `mdeff/fma` README and in `fma_metadata/checksums` |
 
+Every command below runs on Linux, macOS and Windows. Where a platform needs a
+different spelling, both are given.
+
 ---
 
 ## 1. Download
 
-With the code:
+With the code, which resumes interrupted transfers and verifies the checksums:
 
-```powershell
-python -m musicsim download --dataset fma_small
+```bash
+musicsim download --dataset fma_small
 ```
 
-That resumes interrupted transfers and verifies the checksums. To do it by hand
-instead:
+By hand, if the code is not available yet. `curl` ships with macOS, most Linux
+distributions and Windows 10+; on Windows PowerShell write `curl.exe`, because
+`curl` there is an alias of `Invoke-WebRequest`:
 
-```powershell
-New-Item -ItemType Directory -Force datasets\fma\raw
-curl.exe -L -C - --retry 5 --retry-delay 10 -o datasets\fma\raw\fma_metadata.zip https://os.unil.cloud.switch.ch/fma/fma_metadata.zip
-curl.exe -L -C - --retry 5 --retry-delay 10 -o datasets\fma\raw\fma_small.zip    https://os.unil.cloud.switch.ch/fma/fma_small.zip
+```bash
+mkdir -p datasets/fma/raw
+curl -L -C - --retry 5 --retry-delay 10 -o datasets/fma/raw/fma_metadata.zip https://os.unil.cloud.switch.ch/fma/fma_metadata.zip
+curl -L -C - --retry 5 --retry-delay 10 -o datasets/fma/raw/fma_small.zip    https://os.unil.cloud.switch.ch/fma/fma_small.zip
 ```
 
 `-C -` resumes a partial download; the Unil mirror is slow at times. If it keeps
@@ -43,23 +47,22 @@ torrent).
 
 ## 2. Unpack
 
-**`Expand-Archive` does not work on these archives.** Their entries use BZip2
-compression, which the .NET implementation does not support, and it fails with
-`The archive entry was compressed using BZip2 and is not supported`.
+Python's `zipfile` works everywhere and needs nothing installed:
 
-Use the Python `zipfile` module, which does support it and needs nothing
-installed:
-
-```powershell
+```bash
 python -c "import zipfile; [zipfile.ZipFile(f'datasets/fma/raw/{n}.zip').extractall('datasets/fma/raw') for n in ('fma_metadata','fma_small')]"
 ```
 
-7-Zip is faster for the large archive, if it is installed:
+Two platform notes:
 
-```powershell
-& "C:\Program Files\7-Zip\7z.exe" x datasets\fma\raw\fma_metadata.zip -odatasets\fma\raw -y
-& "C:\Program Files\7-Zip\7z.exe" x datasets\fma\raw\fma_small.zip    -odatasets\fma\raw -y
-```
+- **Windows: `Expand-Archive` does not work on these archives.** Their entries
+  use BZip2 compression, which the .NET implementation does not support; it
+  fails with `The archive entry was compressed using BZip2 and is not
+  supported`. Use the Python command above, or 7-Zip
+  (`7z x datasets/fma/raw/fma_small.zip -odatasets/fma/raw -y`), which is faster
+  for the large archive.
+- **Linux, macOS:** `unzip datasets/fma/raw/fma_small.zip -d datasets/fma/raw`
+  also works if `unzip` is installed with BZip2 support.
 
 ## 3. Expected layout
 
@@ -84,19 +87,21 @@ the directory that holds `fma/`.
 
 ## 4. Verify
 
-```powershell
-Test-Path datasets\fma\raw\fma_small\000\000002.mp3                        # True
-(Get-ChildItem datasets\fma\raw\fma_small -Recurse -Filter *.mp3).Count    # 8000
-Test-Path datasets\fma\raw\fma_metadata\tracks.csv                         # True
-python -c "import librosa; y,sr=librosa.load(r'datasets/fma/raw/fma_small/000/000002.mp3', sr=22050); print(y.shape, sr)"
+One portable command counts the excerpts, checks the metadata and decodes a
+clip:
+
+```bash
+python -c "import pathlib,librosa; r=pathlib.Path('datasets/fma/raw'); print('mp3 files:', sum(1 for _ in r.glob('fma_small/*/*.mp3'))); print('tracks.csv:', (r/'fma_metadata/tracks.csv').is_file()); y,sr=librosa.load(r/'fma_small/000/000002.mp3', sr=22050); print('decoded:', y.shape, sr)"
 ```
 
-The last command prints something like `(661504,) 22050`.
+It must print 8000 mp3 files, `tracks.csv: True` and a decoded shape of about
+`(661504,) 22050`.
 
 Once verified, the archives can be deleted to recover about 7.5 GB:
 
-```powershell
-Remove-Item datasets\fma\raw\*.zip
+```bash
+rm datasets/fma/raw/*.zip                  # Linux, macOS
+Remove-Item datasets\fma\raw\*.zip         # Windows (PowerShell)
 ```
 
 ## 5. Things the code knows about this corpus

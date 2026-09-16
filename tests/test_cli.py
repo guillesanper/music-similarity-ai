@@ -73,7 +73,7 @@ def test_an_unimplemented_stage_says_which_phase_brings_it(
     with pytest.raises(SystemExit) as excinfo:
         main(["graph", "--config", str(CONFIGS_DIR / "experiments" / "e01_mfcc_baseline.yaml")])
     assert excinfo.value.code == 2
-    assert "R3" in capsys.readouterr().err
+    assert "P3" in capsys.readouterr().err
 
 
 def test_registries_lists_every_kind(capsys: pytest.CaptureFixture[str]) -> None:
@@ -140,7 +140,7 @@ def test_derive_seed_is_reproducible_and_fits_in_32_bits() -> None:
 def test_package_versions_records_missing_packages_as_null() -> None:
     versions = package_versions()
     assert versions["numpy"] is not None
-    # torch is an optional, phase R8 dependency; whether it is installed or not,
+    # torch is an optional, phase P10 dependency; whether it is installed or not,
     # the key must exist so that its absence is visible in run.json.
     assert "torch" in versions
 

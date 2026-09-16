@@ -1,6 +1,10 @@
-# Development dependencies (pinned): test runner and linter.
+# Kept for backwards compatibility. The versions live in the [dev] extra of
+# pyproject.toml (pytest, ruff):
 #
-#   pip install -r requirements.txt -r requirements-dev.txt
+#   pip install -r requirements-dev.txt
+#
+# which is equivalent to:
+#
+#   pip install -e ".[dev]"
 
-pytest==9.1.1
-ruff==0.16.7
+-e .[dev]

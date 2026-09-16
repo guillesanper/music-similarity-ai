@@ -95,7 +95,7 @@ def derive_seed(seed: int, *stream: str | int) -> int:
 
 
 def torch_is_available() -> bool:
-    """Whether PyTorch can be imported (it is an optional, phase R8 dependency)."""
+    """Whether PyTorch can be imported (it is an optional, phase P10 dependency)."""
     return _import_torch() is not None
 
 

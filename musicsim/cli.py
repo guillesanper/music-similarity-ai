@@ -46,13 +46,13 @@ __all__ = ["build_parser", "main"]
 #: Listing them here (rather than only in the parser) keeps ``--help`` honest
 #: about what already works and what is still to come.
 STAGES: tuple[tuple[str, str, str], ...] = (
-    ("download", "fetch a dataset and verify its checksums", "R1"),
-    ("index", "build the item index of a dataset", "R1"),
-    ("extract", "compute raw features for every item", "R2"),
-    ("embed", "standardise, optionally reduce and L2-normalise the features", "R2"),
-    ("graph", "build the k-nearest-neighbour similarity graph", "R3"),
-    ("evaluate", "run the evaluations the configuration asks for", "R3+"),
-    ("export", "copy figures and tables of a run into report/", "R10"),
+    ("download", "fetch a dataset and verify its checksums", "P1"),
+    ("index", "build the item index of a dataset", "P1"),
+    ("extract", "compute raw features for every item", "P2"),
+    ("embed", "standardise, optionally reduce and L2-normalise the features", "P2"),
+    ("graph", "build the k-nearest-neighbour similarity graph", "P3"),
+    ("evaluate", "run the evaluations the configuration asks for", "P3+"),
+    ("export", "copy figures and tables of a run into report/", "P11"),
 )
 
 
@@ -161,7 +161,7 @@ def _cmd_run(args: argparse.Namespace, parser: argparse.ArgumentParser) -> int:
         from musicsim.experiments import run_experiment
     except ModuleNotFoundError:
         parser.error(
-            "the experiment runner is not implemented yet (phase R3). "
+            "the experiment runner is not implemented yet (phase P3). "
             f"'musicsim show {args.config}' already resolves this configuration."
         )
     return int(run_experiment(config, verbose=args.verbose))

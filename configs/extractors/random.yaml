@@ -1,6 +1,6 @@
 # Negative control: vectors drawn from a fixed seed, carrying no audio
 # information. Every metric reported for a model is reported for this one too,
-# because "better than chance" is the first thing a reader needs to see. Phase R2.
+# because "better than chance" is the first thing a reader needs to see. Phase P2.
 
 extractor:
   name: random

@@ -1,6 +1,6 @@
 # E01 - Does the MFCC embedding retrieve same-genre neighbours better than chance?
 # Answers SQ1 (does a representation induce a good graph on its own?) for the
-# MFCC baseline. Report: section 06_results, "Retrieval baseline". Phase R3.
+# MFCC baseline. Report: section 06_results, "Retrieval baseline". Phase P3.
 
 defaults:
   - ../base.yaml

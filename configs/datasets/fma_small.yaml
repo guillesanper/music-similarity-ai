@@ -1,5 +1,5 @@
 # FMA small: 8000 clips of 30 s, 8 genres x 1000, from Defferrard et al. (2017).
-# Implemented in phase R1 (musicsim/datasets/fma.py).
+# Implemented in phase P1 (musicsim/datasets/fma.py).
 
 dataset:
   name: fma_small

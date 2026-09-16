@@ -48,7 +48,7 @@ and say that it is reported next to every model.}
 \section{Classical techniques}
 \label{sec:classical-methods}
 
-\todo{Describe the classical block (T3), evaluated on exactly the same items as
+\todo{Describe the classical block, evaluated on exactly the same items as
 every other representation: \texttt{acoustic}, the broader descriptor set of
 Tzanetakis and Cook (chroma, spectral contrast, centroid, bandwidth, rolloff,
 ZCR, RMS, tempo, on top of MFCC, about 170 dimensions); \texttt{gauss\_mfcc}, a
@@ -71,7 +71,7 @@ scaler is fitted on MTT itself rather than transferred from FMA.}
 \section{Siamese networks}
 \label{sec:siamese-models}
 
-\todo{Phase R8/R9. This is the principal focus of the work (T2). Describe the
+\todo{Phase P10. This is the principal focus of the work. Describe the
 three siamese inputs that answer SQ5: \texttt{siamese\_mel} (log-mel
 spectrogram, common CNN backbone), \texttt{siamese\_emb} (a frozen audio
 embedding, the headline layer of MERT, through an MLP head) and
@@ -95,7 +95,7 @@ against \texttt{acoustic}) from the gain that comes from the input itself.}
 \section{The CNN classifier and MERT}
 \label{sec:trained-models}
 
-\todo{Phase R8/R9. The convolutional backbone shared with \texttt{siamese\_mel},
+\todo{Phase P10. The convolutional backbone shared with \texttt{siamese\_mel},
 trained here as a genre classifier with cross-entropy, with the embedding taken
 from the penultimate layer. Then MERT \cite{Li2023}: 24\,kHz, 13 layers saved,
 time-averaged per layer and per window, with the headline layer chosen on the
@@ -115,7 +115,7 @@ union for community and clustering analyses.}
 \section{Similarity measures}
 \label{sec:similarity-measures}
 
-\todo{Describe the measure registry (T3): cosine as the canonical measure,
+\todo{Describe the measure registry: cosine as the canonical measure,
 Euclidean and Manhattan after standardisation, Pearson correlation,
 Mahalanobis with Ledoit-Wolf shrinkage for \texttt{mfcc} and \texttt{acoustic},
 and symmetric KL divergence between Gaussians for \texttt{gauss\_mfcc}. Note
@@ -125,7 +125,7 @@ space, so it coincides with the canonical measure.}
 \section{Fuzzy block}
 \label{sec:fuzzy-methods}
 
-\todo{Phase R11 (T4), applied on top of any representation, so that the gain
+\todo{Phase P7, applied on top of any representation, so that the gain
 from modelling gradual relationships can be related to the representation
 itself (SQ6). Describe the four techniques:
 \begin{itemize}
@@ -148,5 +148,5 @@ itself (SQ6). Describe the four techniques:
         on the MTT triplets.
 \end{itemize}
 Implemented in NumPy, with no new dependency unless justified. State which of
-F1--F4 are core and which depend on the supervisor's confirmation (open
-decision in the project plan).}
+F1--F4 are in scope: F1, F3 and F4 are core, while the rule-based route F2 is an
+optional extension the supervisor did not endorse.}

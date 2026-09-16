@@ -4,15 +4,14 @@
 here. No code was written and no data produced; the figures marked `[V]` were
 computed read-only from the original distribution files.*
 
-> **Note (research design v3).** This is a historical, dated study; it is kept
-> as written, not rewritten to match later decisions. In the current research
-> design, its **Q1** (does the genre proxy measure the same thing as perceived
-> similarity?) is one instance of **SQ4** (do the conclusions drawn with the
-> genre proxy hold up under the human judgements of MTT?), and its **Q2**
-> (does the diagnosis change under graded relevance inside a genre?) is the
-> starting point for the graded relevance metric used throughout as a headline
-> quality measure (nDCG@10 with the `hierarchy_graded` gain). See the project
-> plan (Part C) for the full question hierarchy this study feeds into.
+> **Note.** This is a historical, dated study; it is kept as written, not
+> rewritten to match later decisions. Its **Q1** (does the genre proxy measure
+> the same thing as perceived similarity?) is one instance of **SQ4** (do the
+> conclusions drawn with the genre proxy hold up under the human judgements of
+> MTT?), and its **Q2** (does the diagnosis change under graded relevance inside
+> a genre?) is the starting point for the graded relevance metric used
+> throughout as a headline quality measure (nDCG@10 with the `hierarchy_graded`
+> gain). The introduction of the report states the full question hierarchy.
 
 **Convention.** `[V]` means verified against the primary source cited, or
 computed here from its original files (Appendix A). `[I]` means an inference or

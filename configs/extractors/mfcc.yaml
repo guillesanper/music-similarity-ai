@@ -1,4 +1,4 @@
-# MFCC baseline: 80-dimensional timbral descriptor. Phase R2.
+# MFCC baseline: 80-dimensional timbral descriptor. Phase P2.
 
 extractor:
   name: mfcc

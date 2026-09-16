@@ -157,7 +157,7 @@ MARBLE itself does not provide: on MagnaTagATune, ROC-AUC 85.8 and AP 30.2 for a
 probed with a linear model and a 512-unit MLP.
 
 *Where it is used.* `musicsim/evaluation/probes.py`, experiment `e05`, and the
-acceptance criterion of phase R6.
+acceptance criterion of phase P9.
 
 *Caveat.* The descriptor here is 80-dimensional, not 120, and the
 hyper-parameter grids differ. The comparison is indicative, and the report says
@@ -192,7 +192,8 @@ none is reused here. Full argument in
 *What it gives.* A self-supervised music representation model, and the strongest
 published probing figures among the models considered here.
 
-*Where it is used.* `musicsim/extractors/mert.py`, phase R9, on the GPU server.
+*Where it is used.* `musicsim/extractors/mert.py`, phase P2b, on the GPU server
+(or on CPU, at a measured cost).
 
 *Open item.* The licence of the published weights has to be checked on the model
 card and recorded here before the report cites the model as used rather than
@@ -224,7 +225,7 @@ spectral contrast, centroid, bandwidth, rolloff, zero-crossing rate, RMS
 energy and tempo, pooled as mean and standard deviation. This is the basis of
 the `acoustic` extractor.
 
-*Where it is used.* `musicsim/extractors/acoustic.py` (phase R6), report
+*Where it is used.* `musicsim/extractors/acoustic.py` (phase P9), report
 sections 2 (classical techniques) and 4 (methods).
 
 ---
@@ -236,7 +237,7 @@ plus full covariance), the basis of `gauss_mfcc`, and its comparison via
 symmetric KL divergence.
 
 *Where it is used.* `musicsim/extractors/gauss_mfcc.py`,
-`musicsim/similarity.py` (phase R6/R12), report sections 2 and 4.
+`musicsim/similarity.py` (phase P6), report sections 2 and 4.
 
 ---
 
@@ -245,7 +246,7 @@ symmetric KL divergence.
 *What it gives.* The shrinkage estimator used to regularise the covariance
 matrix for the Mahalanobis similarity measure on `mfcc` and `acoustic`.
 
-*Where it is used.* `musicsim/similarity.py` (phase R12), report section 4
+*Where it is used.* `musicsim/similarity.py` (phase P6), report section 4
 (similarity measures).
 
 ---
@@ -253,15 +254,14 @@ matrix for the Mahalanobis similarity measure on `mfcc` and `acoustic`.
 ## Fuzzy modelling
 
 All entries in this section are `[to read]`: they must be read in full and
-verified before the report cites them (V.11), per the research design (Part
-C.6).
+verified before the report cites them (V.11).
 
 ### `Zadeh1965` — Fuzzy Sets `[to read]`
 
 *What it gives.* The foundational definition of graded set membership that
 the whole fuzzy block (F1–F4) builds on.
 
-*Where it is used.* `musicsim/fuzzy/*` (phase R11), report section 2 (fuzzy
+*Where it is used.* `musicsim/fuzzy/*` (phase P7), report section 2 (fuzzy
 modelling) and section 4.
 
 ---
@@ -271,7 +271,7 @@ modelling) and section 4.
 *What it gives.* Fuzzy graphs, i.e. graphs with graded edge membership instead
 of a crisp 0/1 edge, the formal object F1 constructs.
 
-*Where it is used.* `musicsim/fuzzy/graph.py` (F1, phase R11), report
+*Where it is used.* `musicsim/fuzzy/graph.py` (F1, phase P7), report
 sections 2 and 4.
 
 ---
@@ -292,8 +292,9 @@ not a dependency of `musicsim/fuzzy/graph.py`.
 *What it gives.* Mamdani-style fuzzy inference (min/max composition,
 centroid defuzzification), one of the two inference schemes F2 may use.
 
-*Where it is used.* `musicsim/fuzzy/inference.py` (F2, phase R11, core only if
-confirmed by the supervisor), report sections 2 and 4.
+*Where it is used.* `musicsim/fuzzy/inference.py` (F2, optional extension after
+stage S4: the supervisor did not endorse the rule-based route), report sections
+2 and 4.
 
 ---
 
@@ -302,8 +303,8 @@ confirmed by the supervisor), report sections 2 and 4.
 *What it gives.* Takagi-Sugeno (zero-order) fuzzy inference, the second
 inference scheme F2 may use.
 
-*Where it is used.* `musicsim/fuzzy/inference.py` (F2, phase R11), report
-sections 2 and 4.
+*Where it is used.* `musicsim/fuzzy/inference.py` (F2, optional extension after
+stage S4), report sections 2 and 4.
 
 ---
 
@@ -312,7 +313,7 @@ sections 2 and 4.
 *What it gives.* Fuzzy kNN classification, the basis of F3a: graded genre
 membership from the similarity graph.
 
-*Where it is used.* `musicsim/fuzzy/knn.py` (F3a, phase R11), report sections
+*Where it is used.* `musicsim/fuzzy/knn.py` (F3a, phase P7), report sections
 2 and 4.
 
 ---
@@ -322,7 +323,7 @@ membership from the similarity graph.
 *What it gives.* Fuzzy c-means clustering, the basis of F3b: overlapping
 genre communities over the embeddings.
 
-*Where it is used.* `musicsim/fuzzy/cmeans.py` (F3b, phase R11), report
+*Where it is used.* `musicsim/fuzzy/cmeans.py` (F3b, phase P7), report
 sections 2 and 4.
 
 ---
@@ -333,7 +334,7 @@ sections 2 and 4.
 ground truth, and as the fuzzy analogue of the crisp ARI used for Louvain
 communities.
 
-*Where it is used.* `musicsim/evaluation/fuzzy_metrics.py` (phase R11), report
+*Where it is used.* `musicsim/evaluation/fuzzy_metrics.py` (phase P7), report
 sections 4 and 6 (fuzzy modelling).
 
 ---
@@ -347,7 +348,7 @@ relate the distance between representations to the distance between the
 graphs they induce (SQ3, the noise-floor and dose-response analysis).
 
 *Where it is used.* `musicsim/evaluation/representation.py`,
-`musicsim/evaluation/link.py` (phase R9/R10), report sections 2 and 6
+`musicsim/evaluation/link.py` (phase P11), report sections 2 and 6
 (representation gap and graph gap).
 
 ---
@@ -390,9 +391,8 @@ them.
 4. Settle whether "academic use, no explicit licence" is the wording the
    supervisor wants for MagnaTagATune in the report.
 5. Read and verify the twelve classical-technique and fuzzy-modelling entries
-   added for the research design v3 (`Tzanetakis2002` through `Kornblith2019`)
-   before the sections that cite them (report sections 2, 4 and 6) are written
-   past `\todo` stage.
+   (`Tzanetakis2002` through `Kornblith2019`) before the sections that cite them
+   (report sections 2, 4 and 6) are written past `\todo` stage.
 6. Confirm exact venue, year and author list for `Mandel2005`,
    `LedoitWolf2004`, `Mamdani1975`, `Takagi1985`, `Keller1985` and
    `Hullermeier2012`: they are cited here from memory of the standard
