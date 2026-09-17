@@ -4,8 +4,8 @@ One subcommand per pipeline stage, plus ``run`` for a whole experiment::
 
     python -m musicsim download  --dataset fma_small
     python -m musicsim index     --dataset fma_small
-    python -m musicsim extract   --config configs/extractors/mfcc.yaml
-    python -m musicsim embed     --config configs/extractors/mfcc.yaml
+    python -m musicsim extract   --config configs/experiments/e01_mfcc_baseline.yaml
+    python -m musicsim embed     --config configs/experiments/e01_mfcc_baseline.yaml
     python -m musicsim graph     --config configs/experiments/e01_mfcc_baseline.yaml
     python -m musicsim evaluate  --config configs/experiments/e01_mfcc_baseline.yaml
     python -m musicsim run       configs/experiments/e01_mfcc_baseline.yaml
@@ -24,10 +24,14 @@ composed configuration, and every usage error exits with code 2 through
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import sys
 from collections.abc import Sequence
 from pathlib import Path
+
+import numpy as np
+import pandas as pd
 
 from musicsim import __version__, paths
 from musicsim.config import Config, ConfigError, load_config
@@ -170,6 +174,10 @@ def _cmd_run(args: argparse.Namespace, parser: argparse.ArgumentParser) -> int:
 def _cmd_stage(args: argparse.Namespace, parser: argparse.ArgumentParser) -> int:
     if args.stage in {"download", "index"}:
         return _cmd_dataset_stage(args, parser)
+    if args.stage == "extract":
+        return _cmd_extract(args, parser)
+    if args.stage == "embed":
+        return _cmd_embed(args, parser)
     if getattr(args, "config", None) is not None:
         _load(args, parser, args.config)
     parser.error(
@@ -177,6 +185,94 @@ def _cmd_stage(args: argparse.Namespace, parser: argparse.ArgumentParser) -> int
         "See the phase table in README.md."
     )
     return 2  # unreachable: parser.error exits with code 2
+
+
+def _cmd_extract(args: argparse.Namespace, parser: argparse.ArgumentParser) -> int:
+    """Compute raw features for every item of a dataset with one extractor."""
+    config = _load(args, parser, args.config)
+    load_plugins()
+
+    dataset = config.require("dataset.directory")
+    extractor_name = config.require("extractor.name")
+    try:
+        extractor_cls = EXTRACTORS.get(extractor_name)
+    except KeyError as exc:
+        parser.error(str(exc))
+        raise  # unreachable: parser.error exits
+    extractor = extractor_cls(config)
+
+    index_path = paths.dataset_index(dataset)
+    if not index_path.is_file():
+        parser.error(f"no index at {index_path}; run `musicsim index --dataset ...` first")
+    index = pd.read_csv(index_path)
+
+    cache_dir = paths.cache_dir(dataset, f"features-{extractor.name}", config.hash(), create=True)
+    features_path = cache_dir / "features.npy"
+    ids_path = cache_dir / "ids.npy"
+
+    if config.get("runtime.cache", True) and features_path.is_file() and ids_path.is_file():
+        n_items = int(np.load(ids_path).shape[0])
+        sys.stdout.write(
+            f"using cached features: {paths.relative_to_repo(cache_dir)} ({n_items} items)\n"
+        )
+        return 0
+
+    X, ids, failures = extractor.extract_all(
+        index,
+        n_jobs=int(config.get("runtime.n_jobs", -1)),
+        progress=bool(config.get("runtime.progress", True)),
+    )
+
+    np.save(features_path, X)
+    np.save(ids_path, ids)
+    failures_path = cache_dir / "failures.json"
+    failures_payload = [{"item_id": item_id, "reason": reason} for item_id, reason in failures]
+    failures_path.write_text(json.dumps(failures_payload, indent=2), encoding="utf-8")
+
+    rel = paths.relative_to_repo(cache_dir)
+    sys.stdout.write(f"extracted {len(ids)} items ({len(failures)} failed) -> {rel}\n")
+    return 0
+
+
+def _cmd_embed(args: argparse.Namespace, parser: argparse.ArgumentParser) -> int:
+    """Standardise, optionally reduce and L2-normalise a cached feature matrix."""
+    config = _load(args, parser, args.config)
+    load_plugins()
+
+    from musicsim.embeddings import EmbeddingError, build_embeddings
+
+    dataset = config.require("dataset.directory")
+    extractor_name = config.require("extractor.name")
+
+    features_dir = paths.cache_dir(dataset, f"features-{extractor_name}", config.hash())
+    features_path = features_dir / "features.npy"
+    ids_path = features_dir / "ids.npy"
+    if not features_path.is_file() or not ids_path.is_file():
+        rel = paths.relative_to_repo(features_dir)
+        parser.error(
+            f"no cached features for extractor '{extractor_name}' at {rel}; "
+            f"run `musicsim extract --config {args.config}` first"
+        )
+
+    X = np.load(features_path)
+    ids = np.load(ids_path)
+    index = pd.read_csv(paths.dataset_index(dataset))
+
+    try:
+        Z, info = build_embeddings(X, ids, index, config)
+    except EmbeddingError as exc:
+        parser.error(str(exc))
+        raise  # unreachable: parser.error exits
+
+    embed_dir = paths.cache_dir(dataset, f"embeddings-{extractor_name}", config.hash(), create=True)
+    np.save(embed_dir / "embeddings.npy", Z)
+    np.save(embed_dir / "ids.npy", ids)
+
+    sys.stdout.write(
+        f"wrote {Z.shape[0]} embeddings ({Z.shape[1]} dims) -> {paths.relative_to_repo(embed_dir)} "
+        f"(fit on {info['n_fit']} '{config.get('embedding.fit_on', 'training')}' items)\n"
+    )
+    return 0
 
 
 def _cmd_dataset_stage(args: argparse.Namespace, parser: argparse.ArgumentParser) -> int:
