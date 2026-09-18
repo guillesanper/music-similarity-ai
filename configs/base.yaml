@@ -45,6 +45,10 @@ graph:
   # similarity values: with duplicated vectors a value-based rule silently
   # removes the wrong neighbour.
   exclude_self: true
+  # Cosine similarity at or above which two items count as near-duplicates
+  # (musicsim.graphs.duplicates); the archived pipeline's value, validated
+  # against FMA small's 16 known duplicate pairs.
+  near_duplicate_threshold: 0.9999
 
 # --- Retrieval evaluation ----------------------------------------------------
 retrieval:
