@@ -6,7 +6,7 @@ see validation/test — the same rule later experiments that train models on
 ``training`` (siamese, CNN, ...) need anyway.
 
 With every row L2-normalised, ``cos(a, b) == a @ b``, so the similarity graph
-(phase P3) is a plain matrix product.
+is a plain matrix product.
 """
 
 from __future__ import annotations
@@ -16,10 +16,10 @@ import pandas as pd
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
 
-from musicsim import seeding
-from musicsim.config import Config
+from musicsim import paths, seeding
+from musicsim.config import Config, ConfigError
 
-__all__ = ["EmbeddingError", "build_embeddings"]
+__all__ = ["EmbeddingError", "build_embeddings", "load_embeddings"]
 
 #: Tolerance on |norm - 1| after L2-normalising and casting to float32.
 _NORM_TOL = 1e-4
@@ -95,3 +95,24 @@ def build_embeddings(
             )
 
     return Z, info
+
+
+def load_embeddings(config: Config) -> tuple[np.ndarray, np.ndarray]:
+    """``(X, ids)`` of the cached embeddings ``config``'s dataset + extractor produced.
+
+    This is the ``load_embeddings`` half of the B.1.8 interface contract: any
+    stage past ``embed`` reaches the cache only through this function, never
+    by rebuilding ``paths.cache_dir(...)`` by hand. Raises :class:`ConfigError`
+    (a usage error, not a crash) when the embed stage has not run yet.
+    """
+    dataset = config.require("dataset.directory")
+    extractor_name = config.require("extractor.name")
+    embed_dir = paths.cache_dir(dataset, f"embeddings-{extractor_name}", config.hash())
+    embeddings_path = embed_dir / "embeddings.npy"
+    ids_path = embed_dir / "ids.npy"
+    if not embeddings_path.is_file() or not ids_path.is_file():
+        raise ConfigError(
+            f"no cached embeddings for extractor {extractor_name!r} at "
+            f"{paths.relative_to_repo(embed_dir)}; run the embed stage first"
+        )
+    return np.load(embeddings_path), np.load(ids_path)
