@@ -30,7 +30,7 @@ def test_help_exits_cleanly_and_lists_every_stage(capsys: pytest.CaptureFixture[
         main(["--help"])
     assert excinfo.value.code == 0
     out = capsys.readouterr().out
-    for name, _help, _phase in STAGES:
+    for name, _help in STAGES:
         assert name in out
     assert "run" in out and "show" in out and "registries" in out
 
@@ -67,13 +67,13 @@ def test_a_missing_configuration_is_a_usage_error_not_a_traceback() -> None:
     assert excinfo.value.code == 2
 
 
-def test_an_unimplemented_stage_says_which_phase_brings_it(
+def test_an_unimplemented_stage_says_it_is_not_implemented(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     with pytest.raises(SystemExit) as excinfo:
-        main(["graph", "--config", str(CONFIGS_DIR / "experiments" / "e01_mfcc_baseline.yaml")])
+        main(["export", "--run", str(CONFIGS_DIR)])
     assert excinfo.value.code == 2
-    assert "P3" in capsys.readouterr().err
+    assert "not implemented yet" in capsys.readouterr().err
 
 
 def test_registries_lists_every_kind(capsys: pytest.CaptureFixture[str]) -> None:
@@ -140,8 +140,8 @@ def test_derive_seed_is_reproducible_and_fits_in_32_bits() -> None:
 def test_package_versions_records_missing_packages_as_null() -> None:
     versions = package_versions()
     assert versions["numpy"] is not None
-    # torch is an optional, phase P10 dependency; whether it is installed or not,
-    # the key must exist so that its absence is visible in run.json.
+    # torch is an optional dependency, needed only by the trained models; whether
+    # it is installed or not, the key must exist so its absence is visible in run.json.
     assert "torch" in versions
 
 
