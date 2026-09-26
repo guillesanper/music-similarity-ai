@@ -52,8 +52,9 @@ On Linux or macOS, `cat mp3.zip.001 mp3.zip.002 mp3.zip.003 > mp3.zip`.
 The evaluation uses **993 clips**, roughly 115 MB, not the full 2.97 GB. The
 clips that carry a similarity constraint are spread over all 16 directories of
 the archive, so all three parts are still required. Downloading everything is
-what this project does, because it keeps the door open to the tagging experiments
-of phase P9 and avoids a fragile partial-extraction path.
+what this project does, because it keeps the door open to the tagging
+experiments of the classical-classification milestone (stage S2) and avoids a
+fragile partial-extraction path.
 
 ## 2. Expected layout
 
@@ -94,7 +95,7 @@ report would be invalid, so the failure is deliberate rather than a warning.
 
 ## 3b. The full index
 
-`python -m musicsim index --dataset mtt` (phase P8) builds `index.csv` over
+`python -m musicsim index --dataset mtt` (stage S2) builds `index.csv` over
 **all 25 863 clips**, not only the 993 involved in a triplet constraint, with
 the standard split and a boolean `in_triplets` column:
 
@@ -105,12 +106,12 @@ datasets/mtt/index.csv   item_id, path, artist_id, split, in_triplets
 The three uses of this index, each covering a different part of the corpus:
 
 - **Human-judgement evaluation** (`mtt_triplets`, 993 clips, `in_triplets`):
-  agreement with the constraints derived below (SQ4, phase P8, experiment e04)
-  and the model-versus-human ambiguity analysis of the fuzzy block (F4, phase
-  P7, experiment e11).
+  agreement with the constraints derived below (SQ4, stage S2, experiment e04)
+  and the model-versus-human ambiguity analysis of the fuzzy block (F4, stage
+  S2, experiment e11).
 - **Multi-label genre membership** (all 25 863 clips, the tag columns of
   `annotations_final.csv`): ground truth for the fuzzy genre-membership
-  evaluation (F3, phase P7).
+  evaluation (F3, stage S2).
 - **Out-of-distribution gallery** (`mtt_all`, all 25 863 clips): no model is
   trained on MTT, so the whole index is the titular out-of-distribution
   gallery for structure, retrieval and fuzzy evaluation, distinct from

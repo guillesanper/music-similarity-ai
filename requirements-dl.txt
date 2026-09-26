@@ -1,6 +1,6 @@
 # Kept for backwards compatibility. The versions live in the [dl] extra of
-# pyproject.toml (torch, torchaudio, transformers and friends), needed only from
-# phase P10 on: CNN / siamese / triplet training and the MERT extractor.
+# pyproject.toml (torch, torchaudio, transformers and friends), needed only for
+# CNN / siamese / triplet training and the MERT extractor.
 #
 #   pip install -r requirements-dl.txt
 #

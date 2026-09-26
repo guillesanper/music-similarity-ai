@@ -91,7 +91,7 @@ def test_mfcc_extractor_drop_c0_changes_the_output(
 def test_mfcc_matches_the_archived_repository_reference() -> None:
     """Regression check against the archived pipeline's ``mfcc.npy``.
 
-    Requires phase P1's real FMA index and a `musicsim extract` run for the
+    Requires the real FMA index (`musicsim index`) and a `musicsim extract` run for the
     mfcc extractor (``musicsim extract --config
     configs/experiments/e01_mfcc_baseline.yaml``) to already have populated the
     cache — this test does not itself pay for the ~7994-item extraction.

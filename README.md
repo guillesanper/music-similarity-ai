@@ -141,12 +141,12 @@ musicsim run configs/experiments/e01_mfcc_baseline.yaml
 The run writes its metrics, figures and provenance under
 `outputs/runs/e01_mfcc_baseline/<timestamp>_<hash>/`.
 
-Any stage that is not implemented yet stops with a message naming the phase that
-brings it, instead of failing obscurely:
+A stage that is not implemented yet stops with a clear message instead of
+failing obscurely:
 
 ```
-$ musicsim graph --config configs/experiments/e01_mfcc_baseline.yaml
-musicsim graph: error: stage 'graph' is not implemented yet; it arrives in phase P3.
+$ musicsim export --run outputs/runs/e01_mfcc_baseline/<dir>
+musicsim export: error: stage 'export' is not implemented yet. See README.md for what runs today.
 ```
 
 ## Datasets
@@ -154,10 +154,10 @@ musicsim graph: error: stage 'graph' is not implemented yet; it arrives in phase
 No corpus is redistributed here. Each directory holds the download commands,
 the checksums, the licence and the expected layout.
 
-| Corpus | Instructions | Size | Used for | Arrives in |
+| Corpus | Instructions | Size | Used for | State |
 |---|---|---|---|---|
-| FMA small | [`datasets/fma/README.md`](datasets/fma/README.md) | ~7.5 GB | Training and evaluation | P1 |
-| MagnaTagATune | [`datasets/mtt/README.md`](datasets/mtt/README.md) | ~3 GB | External evaluation: human triplets, tags | P8 |
+| FMA small | [`datasets/fma/README.md`](datasets/fma/README.md) | ~7.5 GB | Training and evaluation | **done** |
+| MagnaTagATune | [`datasets/mtt/README.md`](datasets/mtt/README.md) | ~3 GB | External evaluation: human triplets, tags | pending |
 
 `musicsim index` asserts the counts every later number depends on: **7994**
 usable FMA tracks across 8 genres, with no artist shared between splits. If an
@@ -187,7 +187,7 @@ musicsim show configs/experiments/e01_mfcc_baseline.yaml     # resolve it, run n
 
 | Experiment | Question | Outputs |
 |---|---|---|
-| **e01** MFCC baseline | Does the MFCC embedding retrieve same-genre neighbours better than chance? | `metrics/retrieval.csv`, `metrics/retrieval_per_genre.csv` |
+| **e01** MFCC baseline | Does the MFCC embedding retrieve same-genre neighbours better than chance? | `metrics/per_query.csv`, `metrics/retrieval.csv`, `metrics/retrieval_per_genre.csv`, `graphs/mfcc/{neighbors.npz, edges.csv, duplicates.csv}` |
 
 Later phases add one row each: PCA ablation, graph structure, human triplets,
 classical classification, graph variants, robustness, model comparison, fuzzy
@@ -216,20 +216,20 @@ on a clean clone. Tests that need real audio are marked `slow`
 
 ## Status
 
-The framework is built in phases; each ends green with its own acceptance
-criterion and adds its draft of the corresponding report section.
+The framework is built incrementally; each milestone ends green with its own
+acceptance criterion and adds its draft of the corresponding report section.
 
-| Stage | Phase | Deliverable | State |
-|---|---|---|---|
-| — | **P0** | Scaffold: configuration, paths, registries, run log, CLI, tests, report skeleton | **done** |
-| **S1 Baselines** | P1 | FMA download with checksums and item index | **done** |
-| | P2 | Audio, log-mel cache, `mfcc` and `random` extractors, embeddings | **done** |
-| | P3 | kNN graph, retrieval metrics (Recall@K, MAP, NDCG), bootstrap; e01, e02 | pending |
-| **S2 Graphs** | P4-P7 | Structure and hubness, graph variants and robustness, similarity measures, fuzzy graphs and memberships | pending |
-| | P8-P9 | MagnaTagATune ground truth; classical classification and probing | pending |
-| **S3 Siamese** | P10 | Siamese (spectrogram, embedding, descriptors), triplet and CNN | pending |
-| **S4 Comparison** | P11 | Paired model comparison, export, final writing | pending |
-| **S5 Extension** | P12 | Graph neural network for link prediction | deferred until S4 is reproducible |
+| Stage | Deliverable | State |
+|---|---|---|
+| Scaffold | Configuration, paths, registries, run log, CLI, tests, report skeleton | **done** |
+| **S1 Baselines** | FMA download with checksums and item index | **done** |
+| **S1 Baselines** | Audio, log-mel cache, `mfcc` and `random` extractors, embeddings | **done** |
+| **S1 Baselines** | kNN graph, near-duplicate detection, retrieval metrics (Recall@K, MAP, nDCG@10, P@10), clustered bootstrap with Holm correction; e01 | **done** |
+| **S2 Graphs** | Structure and hubness, graph variants and robustness, similarity measures, fuzzy graphs and memberships | pending |
+| **S2 Graphs** | MagnaTagATune ground truth; classical classification and probing | pending |
+| **S3 Siamese** | Siamese (spectrogram, embedding, descriptors), triplet and CNN | pending |
+| **S4 Comparison** | Paired model comparison, export, final writing | pending |
+| **S5 Extension** | Graph neural network for link prediction | deferred until S4 is reproducible |
 
 ## Licence
 

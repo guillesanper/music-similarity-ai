@@ -5,8 +5,8 @@ to exactly ``audio.clip_samples`` (:func:`load_clip`), so that every
 spectrogram downstream has the same number of frames and pooled vectors stay
 comparable across items. The log-mel spectrogram (:func:`log_mel_spectrogram`)
 is kept separate from any particular extractor because a future CNN extractor
-(phase P4+) takes the same spectrogram as input; MFCC is just a DCT and a
-pooling step on top of it.
+takes the same spectrogram as input; MFCC is just a DCT and a pooling step on
+top of it.
 
 Spectrograms are cached in float16 under the output root
 (:func:`load_or_compute_melspec`), keyed only by the ``audio`` and

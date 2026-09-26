@@ -142,8 +142,9 @@ class FmaDataset(Dataset):
                 "path": [str(self._track_path(item_id)) for item_id in item_ids],
                 "split": subset[("set", "split")].astype(str).to_numpy(),
                 "artist_id": subset[("artist", "id")].astype("Int64").to_numpy(),
-                # Placeholder until phase P3 recomputes it from the embeddings;
-                # see the docstring of INDEX_COLUMNS in musicsim.datasets.base.
+                # Placeholder, recomputed from the embeddings by
+                # musicsim.graphs.duplicates; see the docstring of
+                # INDEX_COLUMNS in musicsim.datasets.base.
                 "group_id": item_ids,
                 "genre_top": subset[("track", "genre_top")].to_numpy(),
                 "genres_all": subset[("track", "genres_all")].astype(str).to_numpy(),

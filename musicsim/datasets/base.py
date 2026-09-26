@@ -27,8 +27,8 @@ __all__ = ["INDEX_COLUMNS", "Dataset", "DatasetError"]
 #: ``group_id`` identifies near-duplicate items (a query and its almost-exact
 #: partner should count as one item for retrieval purposes). At index-build
 #: time no such grouping is known yet — it is only recoverable from the
-#: embeddings, which phase P3's ``musicsim.graphs.duplicates`` computes — so
-#: every dataset's :meth:`Dataset.build_index` sets ``group_id`` equal to
+#: embeddings, which :mod:`musicsim.graphs.duplicates` computes — so every
+#: dataset's :meth:`Dataset.build_index` sets ``group_id`` equal to
 #: ``item_id`` (each item its own group) as a placeholder. Code that already
 #: has embeddings must not read this column as ground truth for duplicates.
 INDEX_COLUMNS: tuple[str, ...] = (
