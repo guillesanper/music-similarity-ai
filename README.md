@@ -133,13 +133,16 @@ Reproducing the MFCC baseline of
 takes three commands:
 
 ```bash
-musicsim download --dataset fma_small     # ~7.5 GB, checksum-verified
-musicsim index    --dataset fma_small     # builds datasets/fma/index.csv
+musicsim download --dataset fma_small     # ~7.5 GB, checksum-verified: minutes to hours, connection-bound
+musicsim index    --dataset fma_small     # builds datasets/fma/index.csv: a few seconds
 musicsim run configs/experiments/e01_mfcc_baseline.yaml
 ```
 
-The run writes its metrics, figures and provenance under
-`outputs/runs/e01_mfcc_baseline/<timestamp>_<hash>/`.
+`run` extracts and embeds the 7994 tracks (a few minutes the first time, on
+CPU; seconds afterwards, from cache), builds the graph (seconds), then
+evaluates retrieval for `mfcc` and the `random` control (roughly 1-3 minutes,
+depending on the cache). The run writes its metrics, figures and provenance
+under `outputs/runs/e01_mfcc_baseline/<timestamp>_<hash>/`.
 
 A stage that is not implemented yet stops with a clear message instead of
 failing obscurely:
