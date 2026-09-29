@@ -1,10 +1,29 @@
 """Retrieval evaluation: Recall@K, MAP, nDCG@K and P@K, per query, with the
 significance protocol of C.8 layered on top.
 
+Gallery
+-------
+``retrieval.gallery`` decides which items can be queries *or* candidates,
+independently of ``retrieval.queries`` (which of those items act as queries):
+
+``fma_test`` (default)
+    only the test split (~800 items, artists no model has been fitted on).
+    This is the main evaluation gallery: consultas y candidatos del split
+    test, nunca de training o validation.
+``fma_all``
+    every common item (7994), no restriction. A secondary analysis and the
+    only gallery under which ``queries: test`` reproduces the archived
+    pipeline's regression figure (P@10 dedup 0.306) — that combination is a
+    check, not a headline report row.
+
+Relevance, near-duplicate detection and the ``artist_filter`` variant are all
+computed *inside* the selected gallery, so a query's neighbours, its relevant
+set and its excluded group never reach outside it.
+
 Ranking and relevance
 ----------------------
-For a query, the gallery is ranked by cosine similarity to every other item
-(the full gallery, not just the ``k`` neighbours the "graph" stage persists —
+For a query, the gallery is ranked by cosine similarity to every other item in
+that same gallery (not just the ``k`` neighbours the "graph" stage persists —
 MAP needs the whole ranking, see below). A candidate is relevant when it
 shares its ``genre_top`` with the query (:mod:`musicsim.relevance.label_match`,
 the family-A proxy of C.10bis).
@@ -46,19 +65,46 @@ from musicsim.evaluation.base import Evaluator
 from musicsim.registry import register_evaluator
 from musicsim.runlog import RunLog
 
-__all__ = ["DEFAULT_KS", "RetrievalEvaluator", "compute_per_query_metrics", "query_rows"]
+__all__ = [
+    "DEFAULT_KS",
+    "GALLERIES",
+    "RetrievalEvaluator",
+    "compute_per_query_metrics",
+    "gallery_mask",
+    "query_rows",
+]
 
 #: k = 10 is the headline neighbourhood size (R@10, nDCG@10); the rest are
 #: secondary, kept for continuity with the archived pipeline's P@k figures.
 DEFAULT_KS: tuple[int, ...] = (1, 5, 10, 20)
+
+#: Valid values of ``retrieval.gallery`` (see the module docstring).
+GALLERIES: tuple[str, ...] = ("fma_test", "fma_all")
 
 #: Query rows processed per block: memory is O(block_rows * gallery), not
 #: O(gallery**2).
 _DEFAULT_BLOCK_ROWS = 512
 
 
+def gallery_mask(index_common: pd.DataFrame, gallery: str) -> np.ndarray:
+    """Boolean mask, row-aligned with ``index_common``, selecting ``gallery``.
+
+    ``fma_test`` keeps only the test split; ``fma_all`` keeps everything. Both
+    queries and candidates are drawn exclusively from the selected rows —
+    :meth:`RetrievalEvaluator.evaluate` applies this mask to every
+    representation's embeddings before ranking, computing relevance, detecting
+    near-duplicates or filtering by artist, so nothing outside the gallery can
+    be a neighbour, relevant, or the reason a query gets excluded.
+    """
+    if gallery == "fma_all":
+        return np.ones(len(index_common), dtype=bool)
+    if gallery == "fma_test":
+        return index_common["split"].to_numpy() == "test"
+    raise ValueError(f"retrieval.gallery must be one of {GALLERIES}, got {gallery!r}")
+
+
 def query_rows(ids: np.ndarray, index_common: pd.DataFrame, queries: str) -> np.ndarray:
-    """Row positions (into ``ids``) that act as queries; the gallery is always all of them."""
+    """Row positions (into ``ids``) that act as queries within the gallery ``ids`` already is."""
     if queries == "all":
         return np.arange(len(ids))
     if queries == "test":
@@ -156,12 +202,14 @@ def _align(X: np.ndarray, ids: np.ndarray, common_ids: np.ndarray) -> np.ndarray
 class RetrievalEvaluator(Evaluator):
     """Retrieval evaluation for the configured extractor plus its baselines.
 
-    Reads ``evaluation.retrieval`` (``enabled``, ``queries``, ``baselines``)
-    and the shared defaults under ``retrieval`` (``ks``, ``variants``,
-    ``relevance``). Every representation (the main one and every baseline) is
-    extracted, embedded and ranked through the exact same code path, so a
-    negative control like ``random`` is "just another representation" rather
-    than a special case.
+    Reads ``evaluation.retrieval`` (``enabled``, ``galleries``, ``queries``,
+    ``baselines``) and the shared defaults under ``retrieval`` (``gallery``,
+    ``ks``, ``variants``, ``relevance``). Every representation (the main one
+    and every baseline) is extracted, embedded and ranked through the exact
+    same code path, so a negative control like ``random`` is "just another
+    representation" rather than a special case. Every ``(gallery,
+    queries_mode)`` combination is evaluated and written with its own
+    ``gallery``/``queries`` columns, never mixed into the same row.
     """
 
     def evaluate(self, index: pd.DataFrame, run: RunLog) -> None:
@@ -202,24 +250,15 @@ class RetrievalEvaluator(Evaluator):
         aligned = {name: _align(X, ids, common_ids) for name, (X, ids) in embeddings.items()}
 
         threshold = float(self.config.get("graph.near_duplicate_threshold", 0.9999))
-        dup_pairs = near_duplicate_pairs(aligned[main_name], common_ids, threshold=threshold)
-        dup_groups = duplicate_groups(common_ids, dup_pairs)
 
         relevance_name = self.config.get("retrieval.relevance", "label_match")
         relevance = RELEVANCES.get(relevance_name)(self.config)
-        genre_codes = relevance.label_codes(index, common_ids)
 
-        variant_groups = {
-            "dedup": dup_groups,
-            "raw": np.arange(len(common_ids), dtype=np.int64),
-            "artist_filter": label_codes(index_common["artist_id"]),
-        }
-        variants = [
-            name
-            for name in self.config.get("retrieval.variants", list(variant_groups))
-            if name in variant_groups
-        ]
         ks = sorted({int(k) for k in self.config.get("retrieval.ks", DEFAULT_KS)})
+
+        galleries = stage_cfg.get("galleries", self.config.get("retrieval.gallery", "fma_test"))
+        if isinstance(galleries, str):
+            galleries = [galleries]
 
         queries_modes = stage_cfg.get("queries", self.config.get("retrieval.queries", "all"))
         if isinstance(queries_modes, str):
@@ -227,19 +266,52 @@ class RetrievalEvaluator(Evaluator):
 
         seed = int(self.config.require("seed"))
         frames = []
-        for queries_mode in queries_modes:
-            rows = query_rows(common_ids, index_common, queries_mode)
-            for name in names:
-                X = aligned[name]
-                for variant in variants:
-                    frame = compute_per_query_metrics(
-                        X, common_ids, rows, variant_groups[variant], genre_codes, ks
-                    )
-                    frame["representation"] = name
-                    frame["variant"] = variant
-                    frame["queries"] = queries_mode
-                    frame["seed"] = seed
-                    frames.append(frame)
+        n_dup_pairs = 0
+        for gallery_name in galleries:
+            mask = gallery_mask(index_common, gallery_name)
+            gallery_ids = common_ids[mask]
+            if len(gallery_ids) == 0:
+                raise ValueError(
+                    f"gallery {gallery_name!r} selects no item out of {len(common_ids)}"
+                )
+            gallery_index = index_common.loc[gallery_ids]
+            gallery_aligned = {name: X[mask] for name, X in aligned.items()}
+
+            # Near-duplicate detection, relevance and the artist filter are all
+            # computed inside the gallery, so nothing outside it can be a
+            # neighbour, a relevant candidate, or the reason a query is excluded.
+            dup_pairs = near_duplicate_pairs(
+                gallery_aligned[main_name], gallery_ids, threshold=threshold
+            )
+            dup_groups = duplicate_groups(gallery_ids, dup_pairs)
+            n_dup_pairs += len(dup_pairs)
+            genre_codes = relevance.label_codes(index, gallery_ids)
+
+            variant_groups = {
+                "dedup": dup_groups,
+                "raw": np.arange(len(gallery_ids), dtype=np.int64),
+                "artist_filter": label_codes(gallery_index["artist_id"]),
+            }
+            variants = [
+                name
+                for name in self.config.get("retrieval.variants", list(variant_groups))
+                if name in variant_groups
+            ]
+
+            for queries_mode in queries_modes:
+                rows = query_rows(gallery_ids, gallery_index, queries_mode)
+                for name in names:
+                    X = gallery_aligned[name]
+                    for variant in variants:
+                        frame = compute_per_query_metrics(
+                            X, gallery_ids, rows, variant_groups[variant], genre_codes, ks
+                        )
+                        frame["representation"] = name
+                        frame["gallery"] = gallery_name
+                        frame["variant"] = variant
+                        frame["queries"] = queries_mode
+                        frame["seed"] = seed
+                        frames.append(frame)
         per_query = pd.concat(frames, ignore_index=True)
         per_query.to_csv(run.metrics_dir / "per_query.csv", index=False)
 
@@ -250,16 +322,18 @@ class RetrievalEvaluator(Evaluator):
         per_genre.to_csv(run.metrics_dir / "retrieval_per_genre.csv", index=False)
 
         run.logger.info(
-            "retrieval: %d representation(s), %d near-duplicate pair(s), "
+            "retrieval: %d representation(s), %d galler(y/ies), %d near-duplicate pair(s), "
             "%d row(s) of per_query.csv",
             len(names),
-            len(dup_pairs),
+            len(galleries),
+            n_dup_pairs,
             len(per_query),
         )
 
 
 _SUMMARY_COLUMNS = (
     "representation",
+    "gallery",
     "variant",
     "queries",
     "genre",
@@ -274,13 +348,15 @@ _SUMMARY_COLUMNS = (
 
 
 def _summarize(per_query, index_common, config, bootstrap_ci, seeding) -> pd.DataFrame:
-    """One row per ``(representation, variant, queries, metric, k)``, with two CIs.
+    """One row per ``(representation, gallery, variant, queries, metric, k)``, with two CIs.
 
     ``ci_low``/``ci_high`` resample queries; ``ci_low_artist``/``ci_high_artist``
     resample artists (with all of their queries together), which is the
     honest interval given that tracks by the same artist are not independent
-    (C.8.1). Both use the same resample indices across every group sharing a
-    ``(queries, metric, k)`` triple only incidentally — a real cross-model
+    (C.8.1) — and, since the artists are looked up from the group's own
+    ``item_id``s, only the artists of that gallery are ever resampled. Both
+    use the same resample indices across every group sharing a ``(gallery,
+    queries, metric, k)`` quadruple only incidentally — a real cross-model
     comparison is :func:`musicsim.evaluation.bootstrap.paired_bootstrap_ci`.
     """
     n_resamples = int(config.get("bootstrap.n_resamples", 1000))
@@ -289,12 +365,12 @@ def _summarize(per_query, index_common, config, bootstrap_ci, seeding) -> pd.Dat
     artist_by_id = index_common["artist_id"]
 
     records = []
-    group_cols = ["representation", "variant", "queries", "metric", "k"]
+    group_cols = ["representation", "gallery", "variant", "queries", "metric", "k"]
     for key, group_df in per_query.groupby(group_cols, sort=False):
-        representation, variant, queries_mode, metric, k = key
+        representation, gallery_name, variant, queries_mode, metric, k = key
         values = group_df["value"].to_numpy()
         artists = artist_by_id.loc[group_df["item_id"].to_numpy()].to_numpy()
-        stream = ("retrieval", representation, variant, queries_mode, metric, k)
+        stream = ("retrieval", representation, gallery_name, variant, queries_mode, metric, k)
 
         by_query = bootstrap_ci(
             values, n_resamples=n_resamples, confidence=confidence,
@@ -307,6 +383,7 @@ def _summarize(per_query, index_common, config, bootstrap_ci, seeding) -> pd.Dat
         records.append(
             {
                 "representation": representation,
+                "gallery": gallery_name,
                 "variant": variant,
                 "queries": queries_mode,
                 "genre": "all",
@@ -330,17 +407,17 @@ def _summarize_per_genre(
     headline_k: int = 10,
     headline_variant: str = "dedup",
 ) -> pd.DataFrame:
-    """``P@10`` of the main representation (``dedup``), broken down by genre."""
+    """``P@10`` of the main representation (``dedup``), broken down by gallery and genre."""
     mask = (
         (per_query["representation"] == main_name)
         & (per_query["metric"] == "P")
         & (per_query["k"] == headline_k)
         & (per_query["variant"] == headline_variant)
     )
-    sub = per_query.loc[mask, ["queries", "item_id", "value"]].copy()
+    sub = per_query.loc[mask, ["gallery", "queries", "item_id", "value"]].copy()
     sub["genre"] = index_common["genre_top"].loc[sub["item_id"].to_numpy()].to_numpy()
     return (
-        sub.groupby(["queries", "genre"], as_index=False)["value"]
+        sub.groupby(["gallery", "queries", "genre"], as_index=False)["value"]
         .mean()
         .rename(columns={"value": f"P@{headline_k}"})
     )

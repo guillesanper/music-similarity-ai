@@ -38,20 +38,31 @@ statistical protocol, over their own declared comparisons.}
 \section{Retrieval}
 \label{sec:retrieval-protocol}
 
-\todo{Gallery, query protocol and the exact definitions. The gallery is always
-the whole corpus; \texttt{queries} only decides which queries the averages run
-over, and \texttt{test} is the headline protocol once a model has been trained
-on \texttt{training}. Give the formulas for R@k (raw and normalised by
-$\min(1, k / |\text{relevant}|)$), MAP, nDCG@k (binary and graded) and P@k,
-including the denominator of AP@k. State clearly which metrics are headline and
-which are secondary: \textbf{Recall@10 (raw and normalised), MAP and nDCG@10}
-are the headline quality metrics, together with agreement on the MTT triplets;
-\textbf{P@10 is kept as a secondary metric}, only for continuity with the
-regression figures of the archived repository. Describe the three exclusion
-variants: \texttt{dedup}, the headline one, where the near-duplicate partner of
-a query counts as the query itself and leaves both the ranking and the relevant
-set; \texttt{raw}, with no such treatment; and \texttt{artist\_filter}, which
-removes every track by the same artist.}
+\todo{Gallery, query protocol and the exact definitions. Two parameters, not
+one: \texttt{retrieval.gallery} decides which items can be queried \emph{or}
+retrieved, and \texttt{retrieval.queries} decides which of those items act as
+queries. \texttt{fma\_test} (default) restricts the gallery to the test split
+(artists no representation has been fitted on, \textasciitilde800 items) and
+is the main evaluation; \texttt{fma\_all} lifts the restriction to the whole
+corpus (7994 items) and is a secondary analysis that an experiment opts into
+explicitly, kept for comparability with representations that are not trained
+on anything (this baseline) and with the archived repository, whose
+regression figures live there: P@10 dedup 0.327 for \texttt{queries: all} and
+0.306 for \texttt{queries: test}, both on \texttt{fma\_all}.
+Near-duplicate detection, relevance and the \texttt{artist\_filter} variant are
+all computed inside the selected gallery, so nothing outside it can be a
+neighbour, a relevant candidate, or the reason a query is excluded. Give the
+formulas for R@k (raw and normalised by $\min(1, k / |\text{relevant}|)$), MAP,
+nDCG@k (binary and graded) and P@k, including the denominator of AP@k. State
+clearly which metrics are headline and which are secondary: \textbf{Recall@10
+(raw and normalised), MAP and nDCG@10} are the headline quality metrics,
+together with agreement on the MTT triplets; \textbf{P@10 is kept as a
+secondary metric}, only for continuity with the regression figures of the
+archived repository. Describe the three exclusion variants: \texttt{dedup}, the
+headline one, where the near-duplicate partner of a query counts as the query
+itself and leaves both the ranking and the relevant set; \texttt{raw}, with no
+such treatment; and \texttt{artist\_filter}, which removes every track by the
+same artist.}
 
 \section{Uncertainty}
 \label{sec:uncertainty}

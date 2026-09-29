@@ -14,10 +14,16 @@ stages: [extract, embed, graph, evaluate]
 evaluation:
   retrieval:
     enabled: true
-    # Both query protocols go into the same CSV: `all` averages over every
-    # track, `test` over the test split only, which is the headline number once
-    # a model has been trained on `training`.
-    queries: [all, test]
+    # fma_test (~800 items, unseen artists) is the main evaluation gallery;
+    # fma_all (7994) is the secondary one, kept for comparability with models
+    # that have not been trained on anything (this baseline) and with the
+    # archived pipeline. `queries: all` means "every gallery row queries",
+    # which for fma_test is already the test split. The archived pipeline's
+    # `queries=test` regression figure over the full gallery (P@10 dedup
+    # 0.306) is a check, run with `-o retrieval.gallery=fma_all -o
+    # retrieval.queries=test`, not a row of this experiment's output.
+    galleries: [fma_test, fma_all]
+    queries: all
     # The random extractor is evaluated alongside, as the chance floor.
     baselines: [random]
 

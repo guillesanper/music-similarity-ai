@@ -1,0 +1,39 @@
+# E02 - PCA ablation on the MFCC baseline: does reducing the 80-dimensional
+# MFCC embedding cost retrieval quality? Answers SQ1 together with the
+# dimensionality control of C.3. Report: section 06_results, "Retrieval
+# baseline" (dimensionality control).
+#
+# One run per dimension: the number of components is not a list this
+# experiment sweeps on its own (there is no multi-value mechanism for
+# embedding.pca.n_components), so each point of the ablation is one override:
+#
+#   musicsim run configs/experiments/e02_pca_ablation.yaml -o embedding.pca.n_components=16
+#   musicsim run configs/experiments/e02_pca_ablation.yaml -o embedding.pca.n_components=32
+#   musicsim run configs/experiments/e02_pca_ablation.yaml -o embedding.pca.n_components=48
+#
+# Delta P@10 (dedup, fma_all) is each of these minus e01's no-PCA fma_all
+# figure. The PCA is fit on the training split only (embedding.fit_on, see
+# musicsim/embeddings.py), like every other fitted step in the pipeline.
+
+defaults:
+  - ../base.yaml
+  - ../datasets/fma_small.yaml
+  - ../extractors/mfcc.yaml
+
+experiment: e02_pca_ablation
+
+stages: [extract, embed, graph, evaluate]
+
+embedding:
+  pca:
+    enabled: true
+    n_components: 16          # override: 16 | 32 | 48
+
+evaluation:
+  retrieval:
+    enabled: true
+    # Secondary analysis only (C.5): the ablation is read on fma_all, to stay
+    # comparable with the archived pipeline's ΔP@10 figures.
+    galleries: [fma_all]
+    queries: all
+    baselines: []

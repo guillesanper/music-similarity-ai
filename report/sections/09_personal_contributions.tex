@@ -29,7 +29,7 @@ Cover: the extractors (\texttt{extractors/*}: \texttt{mfcc}, \texttt{acoustic},
 \texttt{mert}); the training code (\texttt{training/*}); the evaluation modules
 owned by this line (\texttt{evaluation/\{retrieval, triplets, probes,
 classifiers, representation\}}); ground truth (triplets, MTT facets, graded
-genres); the classical classifiers of P9; experiments e04 and e05; and the
+genres); the classical classifiers; experiments e04 and e05; and the
 Methods and Evaluation sections on representations, siamese networks and ground
 truth (also SQ1, SQ4 and SQ5 in the Results chapter). Which problems came up
 and how they were solved. Point at specific files and configurations in the
@@ -50,7 +50,15 @@ Which problems came up and how they were solved. Point at specific files and
 configurations in the repository (\repositorio) so that a claim can be
 checked.}
 
-\todo{Both authors: state jointly-owned work explicitly, since P1--P3 (the
-baseline and the shared interface contract), P11 (model comparison, e08 and
-e09, conclusions and the introduction) and this chapter itself are done
-together.}
+\todo{Both authors: state jointly-owned work explicitly, since the baseline and
+the shared interface contract (datasets, MFCC, the kNN graph, retrieval), the
+final model comparison (e08, e09, conclusions and the introduction) and this
+chapter itself are done together. In the baseline work, jointly closing the
+retrieval gallery is worth naming specifically: \texttt{retrieval.gallery} in
+\texttt{configs/base.yaml} now defaults to \texttt{fma\_test} (queries and
+candidates both restricted to the test split), with \texttt{fma\_all} kept
+only as an explicit, secondary override; \texttt{musicsim/evaluation/
+retrieval.py} computes near-duplicate detection, relevance and the
+\texttt{artist\_filter} variant inside whichever gallery is selected, and
+\texttt{e02\_pca\_ablation} closes the PCA ablation left over from the
+baseline phase.}

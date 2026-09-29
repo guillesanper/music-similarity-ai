@@ -56,6 +56,18 @@ retrieval:
   # normalised), MAP and nDCG@10. P@10 is kept for continuity with the
   # archived repository's regression figures, but it is a secondary metric.
   ks: [1, 5, 10, 20]          # k = 10 is the headline neighbourhood size
+  # `gallery` decides which items can be queries or candidates: `fma_test`
+  # (default) restricts both to the ~800 test-split items (artists unseen by
+  # anything fitted on training), the main evaluation for a model that was
+  # actually trained. `fma_all` lifts the restriction (7994 items) and is only
+  # a secondary analysis / regression check against the archived pipeline; an
+  # experiment must opt into it explicitly.
+  gallery: fma_test           # fma_test | fma_all
+  # `queries` selects which gallery rows act as queries; with `gallery:
+  # fma_test` every gallery row is already test-split, so `all` and `test`
+  # coincide. With `gallery: fma_all`, `queries: test` reproduces the archived
+  # pipeline's regression figure (P@10 dedup 0.306) and is kept only as that
+  # check, not as a headline report row.
   queries: all                # all | test
   # dedup is the headline variant: the near-duplicate partner of a query counts
   # as the query itself, so it leaves both the ranking and the relevant set.

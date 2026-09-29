@@ -89,6 +89,11 @@ def toy_retrieval_config(isolated_roots: dict[str, Path]) -> Config:
             },
             "retrieval": {
                 "ks": [1, 3, 10],
+                # Every item here is "training": this fixture exercises the
+                # general pipeline, not gallery restriction, so it opts into
+                # the unrestricted gallery explicitly (see
+                # test_retrieval_gallery.py for that).
+                "gallery": "fma_all",
                 "queries": "all",
                 "variants": ["dedup", "raw", "artist_filter"],
                 "relevance": "label_match",
@@ -166,10 +171,11 @@ def test_run_experiment_writes_graph_and_retrieval_outputs(toy_retrieval_config:
 
     retrieval = pd.read_csv(run.metrics_dir / "retrieval.csv")
     expected_columns = {
-        "representation", "variant", "queries", "genre", "metric", "k",
+        "representation", "gallery", "variant", "queries", "genre", "metric", "k",
         "value", "ci_low", "ci_high", "ci_low_artist", "ci_high_artist",
     }
     assert expected_columns.issubset(retrieval.columns)
+    assert set(retrieval["gallery"]) == {"fma_all"}
     assert (retrieval["ci_low"] <= retrieval["value"] + 1e-9).all()
     assert (retrieval["value"] <= retrieval["ci_high"] + 1e-9).all()
 

@@ -191,10 +191,29 @@ musicsim show configs/experiments/e01_mfcc_baseline.yaml     # resolve it, run n
 | Experiment | Question | Outputs |
 |---|---|---|
 | **e01** MFCC baseline | Does the MFCC embedding retrieve same-genre neighbours better than chance? | `metrics/per_query.csv`, `metrics/retrieval.csv`, `metrics/retrieval_per_genre.csv`, `graphs/mfcc/{neighbors.npz, edges.csv, duplicates.csv}` |
+| **e02** PCA ablation | Does reducing MFCC's 80 dimensions cost retrieval quality? | same `metrics/` files, one run per `-o embedding.pca.n_components=` override (16, 32, 48) |
 
-Later phases add one row each: PCA ablation, graph structure, human triplets,
-classical classification, graph variants, robustness, model comparison, fuzzy
-modelling and graph neural link prediction.
+Later phases add one row each: graph structure, human triplets, classical
+classification, graph variants, robustness, model comparison, fuzzy modelling
+and graph neural link prediction.
+
+Retrieval evaluates two galleries, both restricted to the items every
+representation being compared has in common (`retrieval.gallery` in
+[`configs/base.yaml`](configs/base.yaml), a `gallery` column in every
+`metrics/*.csv`): **`fma_test`** (default) restricts both queries and
+candidates to the ~800 test-split items — artists no representation has been
+fitted on — and is the main evaluation everywhere a model was actually
+trained on `training`. **`fma_all`** lifts the restriction to all 7994 items;
+an experiment opts into it explicitly, as a secondary analysis and to stay
+comparable with the archived pipeline (whose regression figures, `P@10` dedup
+0.327 and 0.306 for `queries=all`/`test`, are reproduced on `fma_all`;
+`configs/experiments/e02_pca_ablation.yaml` reproduces its PCA ablation,
+ΔP@10 −0.026/−0.012/−0.003 at 16/32/48 components).
+
+`fma_test` new reference figures for e01 (`mfcc` vs. `random`, dedup, headline
+metrics): R@10 0.035 vs. 0.013, MAP 0.240 vs. 0.132, nDCG@10 0.363 vs. 0.129 —
+checked in [`tests/test_retrieval_regression.py`](tests/test_retrieval_regression.py)
+(`slow`, needs the real FMA download).
 
 Expensive artefacts are cached under the hash of the configuration that produced
 them, so re-running with unchanged parameters reuses the result. Every run also
@@ -227,7 +246,7 @@ acceptance criterion and adds its draft of the corresponding report section.
 | Scaffold | Configuration, paths, registries, run log, CLI, tests, report skeleton | **done** |
 | **S1 Baselines** | FMA download with checksums and item index | **done** |
 | **S1 Baselines** | Audio, log-mel cache, `mfcc` and `random` extractors, embeddings | **done** |
-| **S1 Baselines** | kNN graph, near-duplicate detection, retrieval metrics (Recall@K, MAP, nDCG@10, P@10), clustered bootstrap with Holm correction; e01 | **done** |
+| **S1 Baselines** | kNN graph, near-duplicate detection, retrieval metrics (Recall@K, MAP, nDCG@10, P@10) over the `fma_test`/`fma_all` galleries, clustered bootstrap with Holm correction; e01, e02 | **done** |
 | **S2 Graphs** | Structure and hubness, graph variants and robustness, similarity measures, fuzzy graphs and memberships | pending |
 | **S2 Graphs** | MagnaTagATune ground truth; classical classification and probing | pending |
 | **S3 Siamese** | Siamese (spectrogram, embedding, descriptors), triplet and CNN | pending |
