@@ -191,6 +191,7 @@ musicsim show configs/experiments/e01_mfcc_baseline.yaml     # resolve it, run n
 | Experiment | Question | Outputs |
 |---|---|---|
 | **e01** MFCC baseline | Does the MFCC embedding retrieve same-genre neighbours better than chance? | `metrics/per_query.csv`, `metrics/retrieval.csv`, `metrics/retrieval_per_genre.csv`, `graphs/mfcc/{neighbors.npz, edges.csv, duplicates.csv}` |
+| **e01 (MERT)** MERT baseline | Does MERT's titular layer retrieve same-genre neighbours better than MFCC and chance? | same `metrics/` files, with `mert` as the main representation and `mfcc`/`random` as baselines |
 | **e02** PCA ablation | Does reducing MFCC's 80 dimensions cost retrieval quality? | same `metrics/` files, one run per `-o embedding.pca.n_components=` override (16, 32, 48) |
 
 Later phases add one row each: graph structure, human triplets, classical
@@ -214,6 +215,36 @@ comparable with the archived pipeline (whose regression figures, `P@10` dedup
 metrics): R@10 0.035 vs. 0.013, MAP 0.240 vs. 0.132, nDCG@10 0.363 vs. 0.129 —
 checked in [`tests/test_retrieval_regression.py`](tests/test_retrieval_regression.py)
 (`slow`, needs the real FMA download).
+
+### MERT
+
+[`configs/extractors/mert.yaml`](configs/extractors/mert.yaml) runs
+[MERT-v1-95M](https://huggingface.co/m-a-p/MERT-v1-95M) (Li et al. 2023, a
+frozen 12-layer transformer pre-trained on 24 kHz music audio), needs
+`pip install -e ".[dl]"`, and downloads its weights from Hugging Face into
+the user's own cache the first time it runs — never into this repository —
+under **CC-BY-NC-4.0** (non-commercial research use, which this thesis is).
+Because the model was pre-trained on 5 s crops, every 30 s clip is processed
+as six non-overlapping 5 s windows rather than one 30 s forward pass, and all
+13 hidden states (the convolutional feature extractor's output plus the 12
+transformer layers) are cached per track; the "titular" layer the rest of the
+pipeline actually uses is chosen once, by Recall@10 on FMA **validation**,
+never test (`musicsim.extractors.mert.select_titular_layer`), and is baked
+into `configs/extractors/mert.yaml`'s `extractor.mert_layer`. Measured on the
+800-item FMA validation gallery: layer **6** (of 0–12) gives the highest
+Recall@10, **0.0548**, over a roughly unimodal curve across the 13 layers
+(0.0411–0.0548, lowest at the edges of the stack, highest around the middle).
+
+Extraction is CPU-viable but slow: **~4.0 s/track** measured on an 8-core CPU
+(six 5 s forward passes per track, single process — see
+`MertExtractor.extract_all`'s docstring for why), so a full `fma_small` run
+(`configs/experiments/e01_mert_baseline.yaml`, 7994 tracks) costs on the order
+of **9 hours of CPU time** — plan accordingly, or run it once and let the
+cache absorb the cost for every later experiment that reuses the same titular
+layer. A CUDA-capable GPU should cut this dramatically (a 95M-parameter model
+is small for a modern GPU, and unlike on CPU, batching the six windows of a
+track — or several tracks at once — should pay off there); that is not
+implemented yet.
 
 Expensive artefacts are cached under the hash of the configuration that produced
 them, so re-running with unchanged parameters reuses the result. Every run also
@@ -247,6 +278,8 @@ acceptance criterion and adds its draft of the corresponding report section.
 | **S1 Baselines** | FMA download with checksums and item index | **done** |
 | **S1 Baselines** | Audio, log-mel cache, `mfcc` and `random` extractors, embeddings | **done** |
 | **S1 Baselines** | kNN graph, near-duplicate detection, retrieval metrics (Recall@K, MAP, nDCG@10, P@10) over the `fma_test`/`fma_all` galleries, clustered bootstrap with Holm correction; e01, e02 | **done** |
+| **S1 Baselines** | `mert` extractor (13 layers) and titular layer selection on real FMA validation data | **done** |
+| **S1 Baselines** | e01 (MERT): full `fma_test`/`fma_all` comparison against `mfcc`/`random` | **pending** — extractor and config are ready (`configs/experiments/e01_mert_baseline.yaml`); the full `fma_small` extraction costs ~9h of CPU time, so it awaits either that time budget or GPU acceleration |
 | **S2 Graphs** | Structure and hubness, graph variants and robustness, similarity measures, fuzzy graphs and memberships | pending |
 | **S2 Graphs** | MagnaTagATune ground truth; classical classification and probing | pending |
 | **S3 Siamese** | Siamese (spectrogram, embedding, descriptors), triplet and CNN | pending |

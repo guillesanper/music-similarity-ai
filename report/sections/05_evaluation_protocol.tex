@@ -135,6 +135,21 @@ the MTT triplets. State that every fuzzy parameter (the $\alpha$ of F1, the
 rule base and membership functions of F2) is fixed on the FMA validation split
 before touching test.}
 
+\section{Model selection}
+\label{sec:model-selection-protocol}
+
+Any decision that could be tuned to the test split is instead made on FMA
+\emph{validation}: early stopping, hyper-parameter grids, and -- the first
+case the code implements -- MERT's titular layer. Each of the 13 hidden
+states \texttt{mert} exposes is L2-normalised and ranked by Recall@10 on
+validation only (\texttt{musicsim.extractors.mert.select\_titular\_layer});
+the winner is the layer every later stage uses, never re-chosen against test:
+layer 6 (of 0--12), R@10 = 0.0548 on the 800-item validation gallery
+(\todo{13-layer figure: Recall@10 against layer index}). The same rule governs every later
+selection: F1's $\alpha$, F3's cut-offs, and the GNN's binary-versus-intensity
+objective are all chosen on validation, stated here once rather than repeated
+at each one.
+
 \section{Invariants}
 \label{sec:invariants}
 

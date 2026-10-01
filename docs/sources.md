@@ -190,14 +190,25 @@ none is reused here. Full argument in
 <https://huggingface.co/m-a-p/MERT-v1-95M>
 
 *What it gives.* A self-supervised music representation model, and the strongest
-published probing figures among the models considered here.
+published probing figures among the models considered here. MERT-v1-95M is a
+12-layer HuBERT-style transformer (768-dimensional, 95M parameters), trained on
+5 s crops of 24 kHz music audio with masked-language-model pre-training; a
+forward pass exposes 13 hidden states (the convolutional feature extractor's
+output plus the 12 transformer layers).
 
-*Where it is used.* `musicsim/extractors/mert.py` (stage S1, once the MFCC
-baseline runs end to end), on the GPU server (or on CPU, at a measured cost).
+*Where it is used.* `musicsim/extractors/mert.py`: 13 layers are pooled and
+cached per item, and the titular layer is the one with the highest Recall@10
+on FMA validation (`select_titular_layer`), never test.
 
-*Open item.* The licence of the published weights has to be checked on the model
-card and recorded here before the report cites the model as used rather than
-merely referenced.
+*Licence `[verified]` against the model card.* CC-BY-NC-4.0 — non-commercial
+research use, which this thesis is. The weights are downloaded from Hugging
+Face at run time into the user's own cache, never committed to this
+repository (consistent with every other cache under `.gitignore`), and pinned
+to revision `12af15fef9d0ac838c3f475bfbbf26d2060dd4f5` for reproducibility.
+
+*Open item.* The paper itself (methodology, pre-training data, reported
+probing figures) is still `[to read]` in full before the report leans on
+anything beyond the architecture and licence facts above.
 
 ---
 
@@ -385,15 +396,14 @@ them.
 
 1. Promote every `[to read]` entry to `[verified]`, or drop the claim that rests
    on it.
-2. Record the licence of the MERT weights (`Li2023`).
-3. Confirm the exact venue and pages of `Logan2003`, which is currently cited
+2. Confirm the exact venue and pages of `Logan2003`, which is currently cited
    second-hand.
-4. Settle whether "academic use, no explicit licence" is the wording the
+3. Settle whether "academic use, no explicit licence" is the wording the
    supervisor wants for MagnaTagATune in the report.
-5. Read and verify the twelve classical-technique and fuzzy-modelling entries
+4. Read and verify the twelve classical-technique and fuzzy-modelling entries
    (`Tzanetakis2002` through `Kornblith2019`) before the sections that cite them
    (report sections 2, 4 and 6) are written past `\todo` stage.
-6. Confirm exact venue, year and author list for `Mandel2005`,
+5. Confirm exact venue, year and author list for `Mandel2005`,
    `LedoitWolf2004`, `Mamdani1975`, `Takagi1985`, `Keller1985` and
    `Hullermeier2012`: they are cited here from memory of the standard
    reference and need a primary-source check before entering

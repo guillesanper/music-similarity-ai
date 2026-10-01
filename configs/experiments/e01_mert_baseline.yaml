@@ -1,0 +1,27 @@
+# E01 (MERT) - Does the MERT titular layer retrieve same-genre neighbours
+# better than MFCC and chance? Same question as e01_mfcc_baseline (SQ1), same
+# runner and gallery, with mert as the main representation and mfcc/random as
+# baselines, so the three are compared from one run's retrieval.csv. Report:
+# section 06_results, "Retrieval baseline" (provisional mert-mfcc row; the
+# follow-up closing this comparison adds the paired bootstrap CI and the
+# provisional Holm correction, C.8.4).
+
+defaults:
+  - ../base.yaml
+  - ../datasets/fma_small.yaml
+  - ../extractors/mert.yaml
+
+experiment: e01_mert_baseline
+
+stages: [extract, embed, graph, evaluate]
+
+evaluation:
+  retrieval:
+    enabled: true
+    galleries: [fma_test, fma_all]
+    queries: all
+    baselines: [mfcc, random]
+
+outputs:
+  metrics: [retrieval.csv, retrieval_per_genre.csv]
+  figures: []

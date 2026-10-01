@@ -1,0 +1,37 @@
+# MERT-v1-95M (Li et al. 2023, arXiv:2306.00107): frozen transformer
+# pre-trained on 24 kHz music audio, 13 hidden states (the convolutional
+# feature extractor's output plus 12 transformer layers), 768 dimensions
+# each. Weights are downloaded from Hugging Face at run time and cached under
+# the user's own HF cache, never inside this repository; released under
+# CC-BY-NC-4.0 (non-commercial research use), which this thesis is -- see
+# docs/sources.md.
+#
+# The model was pre-trained on 5 s crops (its model card), so it is run here
+# on non-overlapping 5 s windows rather than one 30 s forward pass, exactly
+# like phase S3's CNN sees 30 s through several shorter crops.
+
+extractor:
+  name: mert
+  model_name: m-a-p/MERT-v1-95M
+  revision: 12af15fef9d0ac838c3f475bfbbf26d2060dd4f5
+  trust_remote_code: true
+  window_seconds: 5.0
+  n_layers: 13                 # conv feature extractor output + 12 transformer layers
+  hidden_size: 768
+  # Titular layer the rest of the pipeline sees (0 = conv features, 1-12 =
+  # transformer layers 1-12), chosen once by Recall@10 on FMA validation,
+  # never test (musicsim.extractors.mert.select_titular_layer). All 13 stay
+  # cached regardless -- they are the material for the per-layer figure, not
+  # rows of the report.
+  mert_layer: 6
+  dim: 768                     # = hidden_size: extract_one returns the titular layer only
+
+  # --- Execution (none of these enter the layer-cache key: a cache filled on
+  # the CPU is valid on a GPU and vice versa, to float tolerance) -------------
+  device: auto                 # auto = CUDA if there is a GPU, else CPU | cpu | cuda | cuda:N
+  # The settings below only matter on a GPU; the CPU path runs one 5 s window
+  # per forward in one process (grouping windows did not help there).
+  batch_windows: 24            # windows per forward, across items; ~5 GB of VRAM. Halves itself on OOM
+  precision: float32           # float16 = autocast, only after checking it agrees with float32
+  decode_workers: 4            # threads decoding + resampling audio ahead of the GPU
+  prefetch: 8                  # items decoded ahead at most (bounds memory)

@@ -35,6 +35,17 @@ truth (also SQ1, SQ4 and SQ5 in the Results chapter). Which problems came up
 and how they were solved. Point at specific files and configurations in the
 repository (\repositorio) so that a claim can be checked.}
 
+\todo{Student 1, name the MERT work specifically: \texttt{musicsim/extractors/
+mert.py} (13 hidden states of MERT-v1-95M \cite{Li2023}, pooled per 5\,s
+window and cached independently of the titular layer) and
+\texttt{musicsim.extractors.mert.select\_titular\_layer} (Recall@10 on FMA
+validation only, never test); \texttt{configs/extractors/mert.yaml} and
+\texttt{configs/experiments/e01\_mert\_baseline.yaml}, which evaluates
+\texttt{mert}'s titular layer against \texttt{mfcc} and \texttt{random} on
+\texttt{fma\_test} through the same runner as \texttt{e01\_mfcc\_baseline};
+the measured per-track CPU extraction time; and checking the weights'
+licence (CC-BY-NC-4.0) before using them.}
+
 \section{\todo{Student 2 name} --- Graph construction, fuzzy techniques and results analysis}
 \label{sec:contribution-second}
 

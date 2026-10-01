@@ -71,7 +71,7 @@ scaler is fitted on MTT itself rather than transferred from FMA.}
 \section{Siamese networks}
 \label{sec:siamese-models}
 
-\todo{Phase P10. This is the principal focus of the work. Describe the
+\todo{Stage S3. This is the principal focus of the work. Describe the
 three siamese inputs that answer SQ5: \texttt{siamese\_mel} (log-mel
 spectrogram, common CNN backbone), \texttt{siamese\_emb} (a frozen audio
 embedding, the headline layer of MERT, through an MLP head) and
@@ -95,11 +95,44 @@ against \texttt{acoustic}) from the gain that comes from the input itself.}
 \section{The CNN classifier and MERT}
 \label{sec:trained-models}
 
-\todo{Phase P10. The convolutional backbone shared with \texttt{siamese\_mel},
+MERT-v1-95M \cite{Li2023} is a frozen, pre-trained transformer: a 12-layer,
+768-dimensional HuBERT-style encoder trained on 24\,kHz music audio with
+masked-language-model pre-training. A forward pass exposes 13 hidden states
+(the convolutional feature extractor's output, plus the 12 transformer
+layers); each is mean-pooled over time, and the resulting
+13\,$\times$\,768 array is cached per track (\texttt{musicsim/extractors/mert.py}).
+Because the model was pre-trained on 5\,s crops rather than 30\,s clips, every
+track is processed as six non-overlapping 5\,s windows instead of one 30\,s
+forward pass -- quadratic self-attention over a 6$\times$ longer sequence
+would cost roughly 36$\times$ more for the same audio -- and the six windows'
+pooled vectors are themselves averaged. This is the same "several short crops,
+then averaged" strategy the CNN classifier below uses at 3\,s.
+
+Layer selection is model selection, so it happens on FMA \emph{validation}
+only, never on test: each of the 13 layers is L2-normalised (no
+standardisation, so every layer is compared under the same conditions) and
+ranked by Recall@10 on the validation split
+(\texttt{musicsim.extractors.mert.select\_titular\_layer}); the winning layer
+is the one every later stage uses, and all 13 stay available only as the
+material for a per-layer figure (\todo{figure: R@10 against layer index, 0-12}).
+On the 800-item FMA validation gallery, layer \textbf{6} (of 0--12, i.e. the
+6th transformer layer) gives the highest Recall@10, \textbf{0.0548}, against a
+roughly unimodal curve over the 13 layers (0.0411--0.0548, lowest at the
+input-adjacent layer 12 and the convolutional-feature layer 0, highest around
+the middle of the stack) -- consistent with self-supervised speech/music
+encoders generally carrying the most task-general information in their middle
+layers rather than their first or last. Extraction is CPU-viable but
+expensive: \textbf{$\approx$4.0\,s/track} measured on an 8-core CPU (six 5\,s
+forward passes per 30\,s clip, single process -- see below), so the full
+\texttt{fma\_small} corpus (7994 tracks) costs on the order of
+\textbf{9 hours of CPU time}; the weights
+(\texttt{m-a-p/MERT-v1-95M}, revision \texttt{12af15fe}) are downloaded from
+Hugging Face into the user's own cache under \textbf{CC-BY-NC-4.0}, which
+permits the non-commercial research use this thesis makes of them.
+
+\todo{Stage S3. The convolutional backbone shared with \texttt{siamese\_mel},
 trained here as a genre classifier with cross-entropy, with the embedding taken
-from the penultimate layer. Then MERT \cite{Li2023}: 24\,kHz, 13 layers saved,
-time-averaged per layer and per window, with the headline layer chosen on the
-validation split only through a linear probe.}
+from the penultimate layer.}
 
 \section{Similarity graph}
 \label{sec:graph}
@@ -125,7 +158,7 @@ space, so it coincides with the canonical measure.}
 \section{Fuzzy block}
 \label{sec:fuzzy-methods}
 
-\todo{Phase P7, applied on top of any representation, so that the gain
+\todo{Stage S2, applied on top of any representation, so that the gain
 from modelling gradual relationships can be related to the representation
 itself (SQ6). Describe the four techniques:
 \begin{itemize}

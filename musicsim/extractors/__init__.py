@@ -7,6 +7,6 @@ Adding an extractor means adding one module here (decorated with
 
 from __future__ import annotations
 
-from musicsim.extractors import mfcc, random  # noqa: F401
+from musicsim.extractors import mert, mfcc, random  # noqa: F401
 
 __all__: list[str] = []
