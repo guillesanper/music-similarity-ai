@@ -139,6 +139,22 @@ def config_tree(tmp_path: Path) -> Path:
     return root
 
 
+def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item]) -> None:
+    """Skip ``gpu`` tests when there is no CUDA device (or no torch at all)."""
+    try:
+        import torch
+
+        has_cuda = bool(torch.cuda.is_available())
+    except ImportError:
+        has_cuda = False
+    if has_cuda:
+        return
+    skip = pytest.mark.skip(reason="needs a CUDA device")
+    for item in items:
+        if "gpu" in item.keywords:
+            item.add_marker(skip)
+
+
 @pytest.fixture(autouse=True)
 def _clean_registries() -> Iterator[None]:
     """Undo any registration a test performs, so tests stay independent."""

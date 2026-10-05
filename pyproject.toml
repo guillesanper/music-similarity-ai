@@ -101,4 +101,5 @@ addopts = "-q --strict-markers --strict-config"
 filterwarnings = ["error::DeprecationWarning:musicsim.*"]
 markers = [
     "slow: tests that need real audio or a downloaded dataset (deselect with -m 'not slow')",
+    "gpu: tests that need a CUDA device (skipped automatically when torch or CUDA is missing)",
 ]

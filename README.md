@@ -241,10 +241,29 @@ Extraction is CPU-viable but slow: **~4.0 s/track** measured on an 8-core CPU
 (`configs/experiments/e01_mert_baseline.yaml`, 7994 tracks) costs on the order
 of **9 hours of CPU time** — plan accordingly, or run it once and let the
 cache absorb the cost for every later experiment that reuses the same titular
-layer. A CUDA-capable GPU should cut this dramatically (a 95M-parameter model
-is small for a modern GPU, and unlike on CPU, batching the six windows of a
-track — or several tracks at once — should pay off there); that is not
-implemented yet.
+layer.
+
+With a CUDA GPU the extraction is much faster, and nothing needs to be
+switched on: `extractor.device: auto` (the default in
+`configs/extractors/mert.yaml`) uses the GPU when torch sees one and the CPU
+otherwise, `cpu` / `cuda` / `cuda:N` force a choice, and an explicit `cuda`
+without a GPU is an error rather than a silent fallback. The CPU path is
+unchanged. On a GPU, still one process, the windows of several consecutive
+tracks are grouped into one forward pass (`extractor.batch_windows`, 24 by
+default, about 5 GB of VRAM; it halves itself if a forward runs out of
+memory), and the audio of the next tracks is decoded and resampled on
+`extractor.decode_workers` threads while the GPU works, because decoding 30 s
+of mp3 costs about as much as the forward pass itself. The 13-layer cache is
+written per track as soon as its batch is done, so an interrupted run resumes
+from where it stopped, and none of these settings is part of the cache key: a
+cache filled on the CPU is valid on a GPU and the other way round (the values
+agree to float tolerance, not bit for bit), and the cache directory
+(`outputs/cache/fma/mert-layers-*`, about 160 MB for `fma_small`) can simply be
+copied to another machine. `extractor.precision: float16` (autocast, off by
+default) is available but should only be switched on after checking that it
+agrees with `float32`. Timings on a GPU have not been measured yet; the
+`gpu`-marked tests (`pytest -m gpu`) check the device path on a machine that
+has one and skip themselves otherwise.
 
 Expensive artefacts are cached under the hash of the configuration that produced
 them, so re-running with unchanged parameters reuses the result. Every run also
