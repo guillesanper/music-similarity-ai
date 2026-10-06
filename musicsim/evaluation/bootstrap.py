@@ -21,10 +21,13 @@ import pandas as pd
 __all__ = [
     "BootstrapResult",
     "HolmResult",
+    "PairedBootstrapTest",
     "bootstrap_ci",
     "bootstrap_means",
+    "bootstrap_pvalue",
     "holm_correction",
     "paired_bootstrap_ci",
+    "paired_bootstrap_test",
     "seed_variability_table",
 ]
 
@@ -126,6 +129,86 @@ def paired_bootstrap_ci(
         raise ValueError(f"a and b must be row-aligned, got shapes {a.shape} and {b.shape}")
     return bootstrap_ci(
         a - b, n_resamples=n_resamples, confidence=confidence, seed=seed, groups=groups
+    )
+
+
+def bootstrap_pvalue(resampled: np.ndarray, *, null: float = 0.0) -> float:
+    """Two-sided p-value of ``null`` by percentile inversion of resampled means.
+
+    ``resampled`` is the ``(B,)`` vector of bootstrap means of a difference (as
+    returned by :func:`bootstrap_means` on ``a - b``). With ``r_low`` the count
+    of resamples ``<= null`` and ``r_high`` the count ``>= null``::
+
+        p = 2 * min((r_low + 1) / (B + 1), (r_high + 1) / (B + 1))
+
+    clipped to 1. The ``+ 1`` in each tail keeps the p-value away from 0 (a
+    finite number of resamples cannot certify an exact zero), and makes the
+    smallest attainable value ``2 / (B + 1)``; see :func:`paired_bootstrap_test`
+    for what that means for Holm.
+    """
+    r = np.asarray(resampled, dtype=np.float64)
+    if r.ndim != 1 or len(r) == 0:
+        raise ValueError(f"resampled must be a non-empty 1-D array, got shape {r.shape}")
+
+    n = len(r)
+    tail_low = (int((r <= null).sum()) + 1) / (n + 1)
+    tail_high = (int((r >= null).sum()) + 1) / (n + 1)
+    return min(1.0, 2.0 * min(tail_low, tail_high))
+
+
+@dataclasses.dataclass(frozen=True, slots=True)
+class PairedBootstrapTest:
+    """A paired difference with its percentile interval and bootstrap p-value."""
+
+    mean: float
+    ci_low: float
+    ci_high: float
+    p_value: float
+
+
+def paired_bootstrap_test(
+    a: np.ndarray,
+    b: np.ndarray,
+    *,
+    n_resamples: int = 1000,
+    confidence: float = 0.95,
+    seed: int = 0,
+    groups: np.ndarray | None = None,
+) -> PairedBootstrapTest:
+    """Interval and two-sided p-value of ``mean(a) - mean(b)`` from the same resamples.
+
+    Same arguments and checks as :func:`paired_bootstrap_ci`; ``mean``,
+    ``ci_low`` and ``ci_high`` are identical to what it returns. A single call
+    to :func:`bootstrap_means` on ``a - b`` feeds both the interval and the
+    p-value (:func:`bootstrap_pvalue` against 0), so the two cannot disagree
+    through different draws. The p-value is the input of
+    :func:`holm_correction`.
+
+    The test is consistent with the percentile interval: the ``confidence``
+    interval excludes 0 whenever ``p_value < 1 - confidence`` (e.g. a 95 %
+    interval excludes 0 when ``p < 0.05``), up to ties at 0 among the
+    resampled means.
+
+    The smallest attainable p-value is ``2 / (n_resamples + 1)``. Holm needs
+    the smallest p-value of a family of ``m`` tests to be at most
+    ``alpha / m``, so with ``n_resamples = 1000`` (``p_min ~ 0.002``) a family
+    of more than 25 comparisons at ``alpha = 0.05`` cannot survive the
+    correction whatever the data say. The final tables therefore need
+    ``n_resamples = 10000`` (``p_min ~ 0.0002``, families of up to 250).
+    """
+    a = np.asarray(a, dtype=np.float64)
+    b = np.asarray(b, dtype=np.float64)
+    if a.shape != b.shape:
+        raise ValueError(f"a and b must be row-aligned, got shapes {a.shape} and {b.shape}")
+    diff = a - b
+    resampled = bootstrap_means(diff, n_resamples=n_resamples, seed=seed, groups=groups)
+    alpha = (1 - confidence) / 2
+    low, high = np.quantile(resampled, [alpha, 1 - alpha])
+    return PairedBootstrapTest(
+        mean=float(diff.mean()),
+        ci_low=float(low),
+        ci_high=float(high),
+        p_value=bootstrap_pvalue(resampled),
     )
 
 
