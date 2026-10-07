@@ -29,7 +29,12 @@ import pandas as pd
 
 from musicsim import paths, seeding
 from musicsim.config import Config, ConfigError, compose
-from musicsim.embeddings import EmbeddingError, build_embeddings
+from musicsim.embeddings import (
+    EmbeddingError,
+    build_embeddings,
+    embeddings_cache_dir,
+    features_cache_dir,
+)
 from musicsim.registry import EVALUATORS, EXTRACTORS, load_plugins
 from musicsim.runlog import RunLog, start_run
 
@@ -75,7 +80,7 @@ def extract_stage(config: Config) -> ExtractResult:
         raise ConfigError(f"no index at {index_path}; run `musicsim index --dataset ...` first")
     index = pd.read_csv(index_path)
 
-    cache_dir = paths.cache_dir(dataset, f"features-{extractor.name}", config.hash(), create=True)
+    cache_dir = features_cache_dir(config, create=True)
     features_path = cache_dir / "features.npy"
     ids_path = cache_dir / "ids.npy"
 
@@ -115,7 +120,7 @@ def embed_stage(config: Config) -> EmbedResult:
     dataset = config.require("dataset.directory")
     extractor_name = config.require("extractor.name")
 
-    features_dir = paths.cache_dir(dataset, f"features-{extractor_name}", config.hash())
+    features_dir = features_cache_dir(config)
     features_path = features_dir / "features.npy"
     ids_path = features_dir / "ids.npy"
     if not features_path.is_file() or not ids_path.is_file():
@@ -133,7 +138,7 @@ def embed_stage(config: Config) -> EmbedResult:
     except EmbeddingError as exc:
         raise ConfigError(str(exc)) from exc
 
-    embed_dir = paths.cache_dir(dataset, f"embeddings-{extractor_name}", config.hash(), create=True)
+    embed_dir = embeddings_cache_dir(config, create=True)
     np.save(embed_dir / "embeddings.npy", Z)
     np.save(embed_dir / "ids.npy", ids)
 

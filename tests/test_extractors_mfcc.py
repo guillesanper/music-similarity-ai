@@ -13,6 +13,7 @@ import soundfile as sf
 
 from musicsim import audio, paths
 from musicsim.config import Config, load_config
+from musicsim.embeddings import features_cache_dir
 from musicsim.extractors.mfcc import MfccExtractor
 
 #: Archived pre-refactor pipeline; read-only reference, see the module docstring.
@@ -104,7 +105,7 @@ def test_mfcc_matches_the_archived_repository_reference() -> None:
         pytest.skip("fma index not built; run `musicsim index --dataset fma_small` first")
 
     config = load_config(paths.REPO_ROOT / "configs" / "experiments" / "e01_mfcc_baseline.yaml")
-    cache_dir = paths.cache_dir("fma", "features-mfcc", config.hash())
+    cache_dir = features_cache_dir(config)
     features_path = cache_dir / "features.npy"
     ids_path = cache_dir / "ids.npy"
     if not features_path.is_file() or not ids_path.is_file():
