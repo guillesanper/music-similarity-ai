@@ -61,8 +61,14 @@ from collections.abc import Sequence
 import numpy as np
 import pandas as pd
 
+from musicsim.config import Config, ConfigError
 from musicsim.evaluation.base import Evaluator
 from musicsim.registry import register_evaluator
+from musicsim.representations import (
+    RepresentationSpec,
+    load_aligned_representations,
+    parse_representations,
+)
 from musicsim.runlog import RunLog
 
 __all__ = [
@@ -192,10 +198,32 @@ def _append(
     out["value"].extend(values.tolist())
 
 
-def _align(X: np.ndarray, ids: np.ndarray, common_ids: np.ndarray) -> np.ndarray:
-    """Rows of ``X`` reordered to ``common_ids``, dropping any id not in it."""
-    position = pd.Series(np.arange(len(ids)), index=ids)
-    return X[position.loc[common_ids].to_numpy()]
+def _representation_specs(
+    config: Config, stage_cfg: dict, main_name: str
+) -> list[RepresentationSpec]:
+    """The representations to evaluate: ``representations:``, or main + ``baselines``.
+
+    The two ways of listing them are mutually exclusive: with both present it
+    would be unclear which one wins. Near-duplicates are always detected on the
+    main representation (``extractor.name``), so it must be among them.
+    """
+    baselines = stage_cfg.get("baselines", [])
+    if config.get("representations") is not None:
+        if baselines:
+            raise ConfigError(
+                "'representations' and 'evaluation.retrieval.baselines' are both set "
+                f"(baselines={list(baselines)!r}); use only one of them"
+            )
+        specs = parse_representations(config)
+        labels = [spec.label for spec in specs]
+        if main_name not in labels:
+            raise ConfigError(
+                f"the main representation {main_name!r} (extractor.name) must be listed "
+                f"in 'representations', got labels {labels}"
+            )
+        return specs
+    names = [main_name, *(name for name in baselines if name != main_name)]
+    return [RepresentationSpec(label=name, extractor=name, overrides={}) for name in names]
 
 
 @register_evaluator("retrieval")
@@ -204,7 +232,12 @@ class RetrievalEvaluator(Evaluator):
 
     Reads ``evaluation.retrieval`` (``enabled``, ``galleries``, ``queries``,
     ``baselines``) and the shared defaults under ``retrieval`` (``gallery``,
-    ``ks``, ``variants``, ``relevance``). Every representation (the main one
+    ``ks``, ``variants``, ``relevance``). As an alternative to ``baselines``,
+    the top-level ``representations`` list (see :mod:`musicsim.representations`)
+    names every representation to evaluate, the main one included.
+    Near-duplicates are detected on the main representation either way, and
+    the ``seed`` column of ``per_query.csv`` is each representation's own seed
+    (the bootstrap keeps the experiment's). Every representation (the main one
     and every baseline) is extracted, embedded and ranked through the exact
     same code path, so a negative control like ``random`` is "just another
     representation" rather than a special case. Every ``(gallery,
@@ -217,9 +250,7 @@ class RetrievalEvaluator(Evaluator):
         # (including this evaluator, via the registry), so importing it at
         # module load time would be circular.
         from musicsim import seeding
-        from musicsim.embeddings import load_embeddings
         from musicsim.evaluation.bootstrap import bootstrap_ci
-        from musicsim.experiments import embed_stage, extract_stage, representation_config
         from musicsim.graphs.duplicates import duplicate_groups, near_duplicate_pairs
         from musicsim.registry import RELEVANCES
         from musicsim.relevance.base import label_codes
@@ -229,25 +260,13 @@ class RetrievalEvaluator(Evaluator):
             return
 
         main_name = self.config.require("extractor.name")
-        baselines = [name for name in stage_cfg.get("baselines", []) if name != main_name]
-        names = [main_name, *baselines]
+        specs = _representation_specs(self.config, stage_cfg, main_name)
+        names = [spec.label for spec in specs]
 
-        embeddings: dict[str, tuple[np.ndarray, np.ndarray]] = {}
-        for name in names:
-            rep_config = representation_config(self.config, name)
-            extract_stage(rep_config)
-            embed_stage(rep_config)
-            embeddings[name] = load_embeddings(rep_config)
-
-        common_ids = embeddings[main_name][1]
-        for name in names[1:]:
-            common_ids = np.intersect1d(common_ids, embeddings[name][1])
-        common_ids = np.sort(common_ids)
-        if len(common_ids) == 0:
-            raise ValueError("no item id is common to every representation being evaluated")
-
-        index_common = index.set_index("item_id").loc[common_ids]
-        aligned = {name: _align(X, ids, common_ids) for name, (X, ids) in embeddings.items()}
+        loaded = load_aligned_representations(self.config, index, specs)
+        common_ids = loaded.ids
+        index_common = loaded.index
+        aligned = loaded.X
 
         threshold = float(self.config.get("graph.near_duplicate_threshold", 0.9999))
 
@@ -264,7 +283,6 @@ class RetrievalEvaluator(Evaluator):
         if isinstance(queries_modes, str):
             queries_modes = [queries_modes]
 
-        seed = int(self.config.require("seed"))
         frames = []
         n_dup_pairs = 0
         for gallery_name in galleries:
@@ -310,7 +328,7 @@ class RetrievalEvaluator(Evaluator):
                         frame["gallery"] = gallery_name
                         frame["variant"] = variant
                         frame["queries"] = queries_mode
-                        frame["seed"] = seed
+                        frame["seed"] = loaded.seeds[name]
                         frames.append(frame)
         per_query = pd.concat(frames, ignore_index=True)
         per_query.to_csv(run.metrics_dir / "per_query.csv", index=False)
