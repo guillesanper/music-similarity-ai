@@ -63,6 +63,7 @@ import pandas as pd
 
 from musicsim.config import Config, ConfigError
 from musicsim.evaluation.base import Evaluator
+from musicsim.galleries import GALLERIES, gallery_mask
 from musicsim.registry import register_evaluator
 from musicsim.representations import (
     RepresentationSpec,
@@ -84,29 +85,9 @@ __all__ = [
 #: secondary, kept for continuity with the archived pipeline's P@k figures.
 DEFAULT_KS: tuple[int, ...] = (1, 5, 10, 20)
 
-#: Valid values of ``retrieval.gallery`` (see the module docstring).
-GALLERIES: tuple[str, ...] = ("fma_test", "fma_all")
-
 #: Query rows processed per block: memory is O(block_rows * gallery), not
 #: O(gallery**2).
 _DEFAULT_BLOCK_ROWS = 512
-
-
-def gallery_mask(index_common: pd.DataFrame, gallery: str) -> np.ndarray:
-    """Boolean mask, row-aligned with ``index_common``, selecting ``gallery``.
-
-    ``fma_test`` keeps only the test split; ``fma_all`` keeps everything. Both
-    queries and candidates are drawn exclusively from the selected rows —
-    :meth:`RetrievalEvaluator.evaluate` applies this mask to every
-    representation's embeddings before ranking, computing relevance, detecting
-    near-duplicates or filtering by artist, so nothing outside the gallery can
-    be a neighbour, relevant, or the reason a query gets excluded.
-    """
-    if gallery == "fma_all":
-        return np.ones(len(index_common), dtype=bool)
-    if gallery == "fma_test":
-        return index_common["split"].to_numpy() == "test"
-    raise ValueError(f"retrieval.gallery must be one of {GALLERIES}, got {gallery!r}")
 
 
 def query_rows(ids: np.ndarray, index_common: pd.DataFrame, queries: str) -> np.ndarray:
