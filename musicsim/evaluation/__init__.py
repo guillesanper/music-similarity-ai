@@ -1,12 +1,15 @@
 """Evaluators: score a run's representation(s) and write metrics under it.
 
-Importing this package registers every evaluator (``retrieval``) in
+Importing this package registers every evaluator (``retrieval``, ``graph_structure``) in
 :data:`musicsim.registry.EVALUATORS`.
 """
 
 from __future__ import annotations
 
-from musicsim.evaluation import retrieval  # noqa: F401  (registers "retrieval")
+from musicsim.evaluation import (
+    retrieval,  # noqa: F401  (registers "retrieval")
+    structure,  # noqa: F401  (registers "graph_structure")
+)
 from musicsim.evaluation.base import Evaluator
 
 __all__ = ["Evaluator"]

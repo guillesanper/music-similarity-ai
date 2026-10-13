@@ -1,0 +1,27 @@
+# E03 - Do different representations induce kNN graphs with different structure?
+# Hubness (k-occurrence skewness, antihubs), reciprocity, connectivity and genre
+# homophily of the MFCC graph against the random control. Answers the structural
+# half of the main question. Report: section 06_results, "Graph structure".
+
+defaults:
+  - ../base.yaml
+  - ../datasets/fma_small.yaml
+  - ../extractors/mfcc.yaml
+
+experiment: e03_graph_structure
+
+stages: [extract, embed, graph, evaluate]
+
+evaluation:
+  retrieval:
+    enabled: false
+  graph_structure:
+    enabled: true
+    galleries: [fma_test, fma_all]
+    # The random extractor is the chance floor: its hubness and homophily are
+    # what a graph carrying no information looks like.
+    baselines: [random]
+
+outputs:
+  metrics: [graph_structure.csv, in_degree.csv]
+  figures: []
