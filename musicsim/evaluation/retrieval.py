@@ -226,6 +226,8 @@ class RetrievalEvaluator(Evaluator):
     ``gallery``/``queries`` columns, never mixed into the same row.
     """
 
+    default_enabled = True
+
     def evaluate(self, index: pd.DataFrame, run: RunLog) -> None:
         # Deferred imports: musicsim.experiments orchestrates the stages
         # (including this evaluator, via the registry), so importing it at

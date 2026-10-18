@@ -204,7 +204,11 @@ def graph_stage(config: Config, run: RunLog) -> None:
 
 
 def evaluate_stage(config: Config, run: RunLog) -> None:
-    """Run every evaluator whose ``evaluation.<name>.enabled`` is not ``false``."""
+    """Run every evaluator enabled by ``evaluation.<name>.enabled``.
+
+    An evaluator that the configuration does not mention runs only if its class
+    says so (:attr:`Evaluator.default_enabled`).
+    """
     load_plugins()
     dataset = config.require("dataset.directory")
     index_path = paths.dataset_index(dataset)
@@ -214,9 +218,10 @@ def evaluate_stage(config: Config, run: RunLog) -> None:
 
     ran_any = False
     for name in EVALUATORS.names():
-        if not config.get(f"evaluation.{name}.enabled", True):
+        evaluator_cls = EVALUATORS.get(name)
+        if not config.get(f"evaluation.{name}.enabled", evaluator_cls.default_enabled):
             continue
-        evaluator = EVALUATORS.get(name)(config)
+        evaluator = evaluator_cls(config)
         evaluator.evaluate(index, run)
         ran_any = True
 

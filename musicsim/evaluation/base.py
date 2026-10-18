@@ -6,11 +6,17 @@ exactly like an extractor or a dataset. Each one owns a subsection of
 runs and with which parameters, and writes its CSVs under
 ``run.metrics_dir`` — never anywhere else, so a run directory is always the
 complete record of what a report number came from.
+
+Evaluators are off by default (:attr:`Evaluator.default_enabled`): registering a
+new one must not silently add its outputs, and its cost, to experiments written
+before it existed. An experiment opts in with ``evaluation.<name>.enabled: true``;
+only the retrieval evaluator, which every experiment needs, overrides the default.
 """
 
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from typing import ClassVar
 
 import pandas as pd
 
@@ -22,6 +28,9 @@ __all__ = ["Evaluator"]
 
 class Evaluator(ABC):
     """One evaluation protocol: how to score a run's representation(s)."""
+
+    default_enabled: ClassVar[bool] = False
+    """Whether the evaluator runs when ``evaluation.<name>.enabled`` is not set."""
 
     def __init__(self, config: Config) -> None:
         self.config = config
