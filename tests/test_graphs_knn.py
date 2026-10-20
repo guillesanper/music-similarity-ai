@@ -7,7 +7,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from musicsim.graphs.base import Graph, build_graph
+from musicsim.graphs.base import PADDING, Graph, build_graph
 from musicsim.graphs.knn import KnnGraphBuilder, top_k_by_cosine
 
 
@@ -120,3 +120,76 @@ def test_graph_rejects_mismatched_shapes() -> None:
             weights=np.zeros((3, 1), dtype=np.float32),
             ids=np.arange(3),
         )
+
+
+def _padded_graph() -> Graph:
+    # Degrees 2, 1, 0 over three nodes with k = 2.
+    return Graph(
+        neighbors=np.array([[1, 2], [0, PADDING], [PADDING, PADDING]], dtype=np.int32),
+        weights=np.array([[0.9, 0.5], [0.8, 0.0], [0.0, 0.0]], dtype=np.float32),
+        ids=np.array([10, 20, 30]),
+    )
+
+
+def test_padding_in_the_middle_of_a_row_is_rejected() -> None:
+    with pytest.raises(ValueError, match=r"row 1.*suffix"):
+        Graph(
+            neighbors=np.array([[1, 2], [PADDING, 0], [0, 1]], dtype=np.int32),
+            weights=np.array([[0.9, 0.5], [0.0, 0.8], [0.7, 0.3]], dtype=np.float32),
+            ids=np.arange(3),
+        )
+
+
+def test_nonzero_weight_in_a_padding_slot_is_rejected() -> None:
+    with pytest.raises(ValueError, match=r"row 0.*padding slot"):
+        Graph(
+            neighbors=np.array([[1, PADDING], [0, 2], [0, 1]], dtype=np.int32),
+            weights=np.array([[0.9, 0.5], [0.8, 0.2], [0.7, 0.3]], dtype=np.float32),
+            ids=np.arange(3),
+        )
+
+
+@pytest.mark.parametrize("bad", [3, -2])
+def test_neighbor_outside_the_node_range_is_rejected(bad: int) -> None:
+    with pytest.raises(ValueError, match=rf"row 1.*{bad}"):
+        Graph(
+            neighbors=np.array([[1], [bad], [0]], dtype=np.int32),
+            weights=np.zeros((3, 1), dtype=np.float32),
+            ids=np.arange(3),
+        )
+
+
+def test_degree_counts_real_neighbors_per_row() -> None:
+    degree = _padded_graph().degree
+    assert degree.dtype == np.int64
+    assert degree.tolist() == [2, 1, 0]
+
+
+def test_degree_of_a_graph_without_padding_is_k_everywhere() -> None:
+    graph = Graph(
+        neighbors=np.array([[1, 2], [0, 2], [0, 1]], dtype=np.int32),
+        weights=np.full((3, 2), 0.5, dtype=np.float32),
+        ids=np.arange(3),
+    )
+    assert graph.degree.tolist() == [2, 2, 2]
+
+
+def test_edges_frame_drops_padding_and_keeps_one_based_ranks() -> None:
+    graph = _padded_graph()
+    edges = graph.to_edges_frame()
+    assert len(edges) == int(graph.degree.sum()) == 3
+    assert edges["src_id"].tolist() == [10, 10, 20]
+    assert edges["dst_id"].tolist() == [20, 30, 10]
+    assert edges["rank"].tolist() == [1, 2, 1]
+    np.testing.assert_allclose(edges["weight"], [0.9, 0.5, 0.8])
+
+
+def test_graph_with_padding_survives_write_and_read(tmp_path: Path) -> None:
+    graph = _padded_graph()
+    graph.write(tmp_path / "graph")
+
+    loaded = Graph.read(tmp_path / "graph")
+    np.testing.assert_array_equal(loaded.neighbors, graph.neighbors)
+    np.testing.assert_allclose(loaded.weights, graph.weights)
+    np.testing.assert_array_equal(loaded.ids, graph.ids)
+    assert loaded.degree.tolist() == [2, 1, 0]

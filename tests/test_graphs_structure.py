@@ -16,7 +16,7 @@ from musicsim import paths
 from musicsim.config import Config
 from musicsim.experiments import run_experiment
 from musicsim.extractors.base import Extractor
-from musicsim.graphs.base import Graph
+from musicsim.graphs.base import PADDING, Graph
 from musicsim.graphs.structure import (
     adjacency,
     connected_components,
@@ -99,6 +99,111 @@ def test_uniform_in_degree_has_no_skew() -> None:
 def test_structure_summary_includes_homophily_only_with_labels() -> None:
     assert "label_homophily" not in structure_summary(STAR)
     assert "label_homophily" in structure_summary(STAR, np.zeros(4, dtype=int))
+
+
+# --- graphs with padding ---------------------------------------------------------
+# Node 2 has no neighbour at all; nodes 1 and 4 have one; nodes 0 and 3 have two.
+#   edges: 0->1 (.9), 0->4 (.5), 1->0 (.8), 3->4 (.7), 3->0 (.3), 4->3 (.6)
+_P = PADDING
+PADDED = Graph(
+    neighbors=np.array([[1, 4, _P], [0, _P, _P], [_P, _P, _P], [4, 0, _P], [3, _P, _P]]),
+    weights=np.array(
+        [[0.9, 0.5, 0.0], [0.8, 0.0, 0.0], [0.0, 0.0, 0.0], [0.7, 0.3, 0.0], [0.6, 0.0, 0.0]],
+        dtype=np.float32,
+    ),
+    ids=np.arange(5),
+)
+# No edge at all: every slot is padding.
+EMPTY = Graph(
+    neighbors=np.full((3, 2), _P), weights=np.zeros((3, 2), dtype=np.float32), ids=np.arange(3)
+)
+
+
+def test_in_degree_ignores_padding() -> None:
+    np.testing.assert_array_equal(in_degree(PADDED), [2, 1, 0, 1, 2])
+    np.testing.assert_array_equal(in_degree(EMPTY), [0, 0, 0])
+
+
+def test_adjacency_has_no_edge_for_padding() -> None:
+    A = adjacency(PADDED).toarray()
+    assert A.sum() == 6
+    # Padding read as an index would add 0/1/2/3/4 -> N-1 edges; only 0 and 3 point at node 4.
+    np.testing.assert_array_equal(A[:, 4], [1, 0, 0, 1, 0])
+    assert A[2].sum() == 0
+    assert adjacency(EMPTY).nnz == 0
+
+
+def test_label_homophily_counts_real_edges_only() -> None:
+    labels = np.array([0, 0, 1, 1, 1])  # same: 0->1, 1->0, 3->4, 4->3; different: 0->4, 3->0
+    assert label_homophily(PADDED, labels) == pytest.approx(4 / 6)
+    assert label_homophily(EMPTY, np.zeros(3, dtype=int)) == 0.0
+
+
+def test_reciprocity_on_padded_graph() -> None:
+    # 0<->1 and 3<->4 are mutual (4 of 6 edges); 0->4 and 3->0 are not.
+    assert reciprocity(PADDED) == pytest.approx(4 / 6)
+    assert reciprocity(EMPTY) == 0.0
+
+
+def test_isolated_node_is_its_own_component() -> None:
+    assert connected_components(PADDED) == (2, 0.8)  # {0, 1, 3, 4} and {2}
+    assert connected_components(EMPTY) == (3, pytest.approx(1 / 3))
+
+
+def test_hub_threshold_uses_the_actual_mean_in_degree() -> None:
+    # N_k = [2, 1, 0, 1, 2]: mean 1.2 (not k = 3), std sqrt(0.56). With hub_factor 0.5 the
+    # threshold is about 1.57, so the two nodes with N_k = 2 are hubs; against k = 3 none would be.
+    assert hubness_summary(PADDED, hub_factor=0.5)["hub_fraction"] == pytest.approx(0.4)
+
+
+def test_structure_summary_on_padded_graph() -> None:
+    summary = structure_summary(PADDED, np.array([0, 0, 1, 1, 1]))
+    assert summary["k"] == 3.0
+    assert summary["mean_degree"] == pytest.approx(6 / 5)
+    assert summary["mean_edge_weight"] == pytest.approx(3.8 / 6)  # padding zeros do not dilute it
+    assert summary["n_components"] == 2.0
+    assert summary["largest_component_share"] == pytest.approx(0.8)
+    assert summary["label_homophily"] == pytest.approx(4 / 6)
+
+
+def test_structure_summary_of_edgeless_graph() -> None:
+    summary = structure_summary(EMPTY, np.zeros(3, dtype=int))
+    assert summary["mean_degree"] == 0.0
+    assert summary["mean_edge_weight"] == 0.0
+    assert summary["label_homophily"] == 0.0
+
+
+def test_structure_summary_of_unpadded_graph_is_unchanged() -> None:
+    # STAR by hand: N_k = [3, 1, 0, 0] (mean 1, std sqrt(1.5)), skewness 1 / sqrt(1.5),
+    # Gini (2 * 15 - 5 * 4) / (4 * 4) = 0.625, no hub (threshold 1 + 2 * sqrt(1.5) > 3).
+    summary = structure_summary(STAR, np.array([0, 0, 1, 0]))
+    assert summary == pytest.approx(
+        {
+            "n_nodes": 4.0,
+            "k": 1.0,
+            "mean_degree": 1.0,
+            "mean_edge_weight": 0.5,
+            "hubness_skewness": 1 / np.sqrt(1.5),
+            "in_degree_gini": 0.625,
+            "in_degree_max": 3.0,
+            "in_degree_std": np.sqrt(1.5),
+            "antihub_fraction": 0.5,
+            "hub_fraction": 0.0,
+            "reciprocity": 0.5,
+            "n_components": 1.0,
+            "largest_component_share": 1.0,
+            "label_homophily": 0.75,
+        }
+    )
+    # Widening the rows with a padding column changes ``k`` and nothing else.
+    widened = Graph(
+        neighbors=np.hstack([STAR.neighbors, np.full((4, 1), _P)]),
+        weights=np.hstack([STAR.weights, np.zeros((4, 1), dtype=np.float32)]),
+        ids=STAR.ids,
+    )
+    expected = structure_summary(STAR, np.array([0, 0, 1, 0]))
+    expected["k"] = 2.0
+    assert structure_summary(widened, np.array([0, 0, 1, 0])) == pytest.approx(expected)
 
 
 # --- end to end ----------------------------------------------------------------

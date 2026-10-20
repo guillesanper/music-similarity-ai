@@ -12,6 +12,13 @@ space ``N_k`` becomes right-skewed (Radovanovic et al. 2010): a few *hubs*
 appear in many neighbour lists and many *antihubs* appear in none, which
 distorts retrieval and any graph built on top of it. Its skewness is the
 standard summary; the Gini coefficient and the antihub fraction complement it.
+
+Rows of a graph may be padded (see :mod:`musicsim.graphs.base`): a padding slot
+is the absence of an edge, never an edge. Every function here therefore counts
+only real neighbours — ``-1`` must not be used as an index, where it would
+silently point at the last node — and a node with no real neighbour is simply
+isolated (its own weak component). A graph without padding gives the same
+values as a fixed-degree kNN graph.
 """
 
 from __future__ import annotations
@@ -21,7 +28,7 @@ from scipy import sparse
 from scipy.sparse import csgraph
 from scipy.stats import skew
 
-from musicsim.graphs.base import Graph
+from musicsim.graphs.base import PADDING, Graph
 
 __all__ = [
     "adjacency",
@@ -38,14 +45,16 @@ __all__ = [
 def adjacency(graph: Graph) -> sparse.csr_matrix:
     """Binary directed adjacency matrix: ``A[i, j] = 1`` iff ``j`` is a neighbour of ``i``."""
     n, k = graph.neighbors.shape
-    rows = np.repeat(np.arange(n), k)
-    data = np.ones(n * k, dtype=np.int8)
-    return sparse.csr_matrix((data, (rows, graph.neighbors.ravel())), shape=(n, n))
+    real = (graph.neighbors != PADDING).ravel()
+    rows = np.repeat(np.arange(n), k)[real]
+    data = np.ones(rows.size, dtype=np.int8)
+    return sparse.csr_matrix((data, (rows, graph.neighbors.ravel()[real])), shape=(n, n))
 
 
 def in_degree(graph: Graph) -> np.ndarray:
-    """The k-occurrence ``N_k`` of every node, ``(N,)``."""
-    return np.bincount(graph.neighbors.ravel(), minlength=graph.n_nodes)
+    """The k-occurrence ``N_k`` of every node, ``(N,)``; padding slots are not counted."""
+    neighbors = graph.neighbors
+    return np.bincount(neighbors[neighbors != PADDING], minlength=graph.n_nodes)
 
 
 def gini(values: np.ndarray) -> float:
@@ -61,8 +70,9 @@ def gini(values: np.ndarray) -> float:
 def hubness_summary(graph: Graph, *, hub_factor: float = 2.0) -> dict[str, float]:
     """Skewness, Gini, antihub and hub fractions of the in-degree distribution.
 
-    A *hub* has ``N_k > mean + hub_factor * std``; since the mean of ``N_k`` is
-    exactly ``k``, that is ``k + hub_factor * std``. An *antihub* has ``N_k = 0``.
+    A *hub* has ``N_k > mean + hub_factor * std``, with the mean taken over the
+    actual ``N_k``: it equals ``k`` only when no row is padded, and is the mean
+    degree otherwise. An *antihub* has ``N_k = 0``.
     """
     nk = in_degree(graph).astype(np.float64)
     std = nk.std()
@@ -94,22 +104,38 @@ def connected_components(graph: Graph) -> tuple[int, float]:
 
 
 def label_homophily(graph: Graph, labels: np.ndarray) -> float:
-    """Fraction of edges whose two endpoints share a label (``labels``: ``(N,)`` codes)."""
+    """Fraction of real edges whose two endpoints share a label (``labels``: ``(N,)`` codes).
+
+    ``0.0`` when the graph has no edge at all.
+    """
     labels = np.asarray(labels)
     if labels.shape != (graph.n_nodes,):
         raise ValueError(
             f"labels {labels.shape} does not have one entry per node ({graph.n_nodes})"
         )
-    return float((labels[graph.neighbors] == labels[:, None]).mean())
+    real = graph.neighbors != PADDING
+    n_edges = int(real.sum())
+    if n_edges == 0:
+        return 0.0
+    # ``labels[PADDING]`` reads the last node's label, but ``real`` masks it out.
+    same = (labels[graph.neighbors] == labels[:, None]) & real
+    return float(same.sum() / n_edges)
 
 
 def structure_summary(graph: Graph, labels: np.ndarray | None = None) -> dict[str, float]:
-    """Every structural statistic of ``graph`` as one flat ``{metric: value}`` mapping."""
+    """Every structural statistic of ``graph`` as one flat ``{metric: value}`` mapping.
+
+    ``k`` is the row width of the graph and ``mean_degree`` the mean number of
+    real neighbours per node (equal to ``k`` when nothing is padded);
+    ``mean_edge_weight`` averages real edges only, ``0.0`` if there are none.
+    """
     n_components, largest = connected_components(graph)
+    real = graph.neighbors != PADDING
     out: dict[str, float] = {
         "n_nodes": float(graph.n_nodes),
         "k": float(graph.k),
-        "mean_edge_weight": float(graph.weights.mean()),
+        "mean_degree": float(graph.degree.mean()),
+        "mean_edge_weight": float(graph.weights[real].mean()) if real.any() else 0.0,
         **hubness_summary(graph),
         "reciprocity": reciprocity(graph),
         "n_components": float(n_components),
