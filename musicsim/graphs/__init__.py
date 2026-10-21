@@ -8,6 +8,7 @@ Importing this package registers every graph builder (``knn``) in
 from __future__ import annotations
 
 from musicsim.graphs import knn  # noqa: F401  (registers "knn")
+from musicsim.graphs.adjacency import to_csr
 from musicsim.graphs.base import Graph, GraphBuilder, build_graph
 from musicsim.graphs.duplicates import NEAR_DUP_SIM, duplicate_groups, near_duplicate_pairs
 
@@ -18,4 +19,5 @@ __all__ = [
     "build_graph",
     "duplicate_groups",
     "near_duplicate_pairs",
+    "to_csr",
 ]
