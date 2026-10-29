@@ -15,7 +15,7 @@ stages: [extract, embed, graph, evaluate]
 evaluation:
   retrieval:
     enabled: false
-  graph_structure:
+  structure:
     enabled: true
     galleries: [fma_test, fma_all]
     # The random extractor is the chance floor: its hubness and homophily are
@@ -23,5 +23,5 @@ evaluation:
     baselines: [random]
 
 outputs:
-  metrics: [graph_structure.csv, in_degree.csv]
+  metrics: [structure.csv, hubness.csv]
   figures: []

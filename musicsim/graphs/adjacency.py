@@ -14,8 +14,7 @@ Decisions worth knowing:
 * Padding slots are the absence of an edge (see :mod:`musicsim.graphs.base`)
   and are ignored. Self-loops ``i -> i`` are dropped silently: the matrix has
   no diagonal, a self-loop carries no structural information, and a graph built
-  with ``exclude_self=False`` is legitimate. :func:`musicsim.graphs.structure.adjacency`
-  keeps them, so the two views differ on such graphs.
+  with ``exclude_self=False`` is legitimate.
 * If a row lists the same neighbour twice, the larger weight wins. Summing
   would double a similarity, which has no meaning.
 * A symmetrising rule is applied to ``(w_ij, w_ji)`` over the union of both

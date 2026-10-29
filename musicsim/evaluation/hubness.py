@@ -4,29 +4,26 @@ The *k-occurrence* ``N_k(i)`` is how many nodes list ``i`` among their ``k``
 neighbours, i.e. the in-degree of ``i``. In a high-dimensional space ``N_k``
 becomes right-skewed (Radovanovic et al. 2010): a few *hubs* appear in many
 neighbour lists and many *antihubs* appear in none. The skewness of ``N_k`` is
-the standard summary and one of the three headline structure metrics.
+the standard summary and one of the two headline structure metrics.
 
-Two decisions differ from :func:`musicsim.graphs.structure.hubness_summary`:
+``N_k`` is the column sum of :func:`musicsim.graphs.adjacency.to_csr`, so it
+agrees with every other structure metric on what an edge is: padding slots,
+self-loops and repeated neighbours are not edges and are not counted.
 
-* A hub is a node with ``N_k > 2k``, a threshold that depends only on ``k``.
-  The older summary uses ``mean + 2 * std``, which moves with the distribution
-  and so is not comparable between graphs with different skew. Here a hub means
-  the same thing in every graph built with the same ``k``.
-* The summary takes the ``N_k`` vector, not the graph, so it can be applied to
-  any occurrence counts without rebuilding a :class:`~musicsim.graphs.base.Graph`.
+A hub is a node with ``N_k > 2 * mean(N_k)``. The mean is the mean degree, so
+the rule equals the usual ``N_k > 2k`` whenever every row has ``k`` neighbours
+(the canonical kNN graph) and stays meaningful when degrees vary (mutual kNN,
+thresholds), where ``2k`` would flag nothing: no node of a mutual kNN graph can
+exceed ``k``. A threshold based on the spread of ``N_k`` (``mean + 2 * std``) is
+avoided on purpose: it rises with the skew it is meant to detect, hiding the
+hubs of the most biased representation and so distorting the comparison
+between representations.
 
 Skewness is the population third standardised moment (``bias=True``), the
 convention of the hubness literature. It is a ratio to the standard deviation,
 which is zero for a constant ``N_k`` (a directed ring, an empty graph); the
 skewness is then defined as ``0.0`` rather than ``nan`` so that perfectly
 regular graphs yield a plain number in a results table.
-
-Rows of a graph may be padded (see :mod:`musicsim.graphs.base`): a padding slot
-is the absence of an edge and is never counted, so ``-1`` cannot be credited to
-the last node.
-
-The function is named ``k_occurrence_summary`` and not ``hubness_summary`` to
-avoid two functions with the same name and different meanings.
 """
 
 from __future__ import annotations
@@ -34,30 +31,29 @@ from __future__ import annotations
 import numpy as np
 from scipy.stats import skew
 
-from musicsim.graphs.base import PADDING, Graph
+from musicsim.graphs.adjacency import to_csr
+from musicsim.graphs.base import Graph
 
-__all__ = ["k_occurrence", "k_occurrence_summary"]
+__all__ = ["hubness_summary", "k_occurrence"]
 
 
 def k_occurrence(graph: Graph) -> np.ndarray:
-    """``int64`` ``(N,)``: how many times each node appears among the neighbours of the others.
+    """``int64`` ``(N,)``: how many nodes list each node as a neighbour.
 
-    Padding slots are not counted.
+    The column sums of ``to_csr(graph)``: padding, self-loops and repeated
+    neighbours are not edges and do not count.
     """
-    neighbors = graph.neighbors
-    return np.bincount(neighbors[neighbors != PADDING], minlength=graph.n_nodes).astype(np.int64)
+    return np.asarray(to_csr(graph).sum(axis=0), dtype=np.int64).ravel()
 
 
-def k_occurrence_summary(n_k: np.ndarray, k: int) -> dict[str, float]:
+def hubness_summary(n_k: np.ndarray) -> dict[str, float]:
     """Skewness, antihub and hub fractions and maximum of the k-occurrence ``n_k``.
 
     ``skewness`` is the population third standardised moment of ``n_k``, and
     ``0.0`` (not ``nan``) when ``n_k`` is constant. ``antihub_fraction`` is the
     share of nodes with ``N_k == 0``, ``hub_fraction`` the share with
-    ``N_k > 2 * k`` and ``max_k_occurrence`` the largest ``N_k``.
+    ``N_k > 2 * n_k.mean()`` and ``max_k_occurrence`` the largest ``N_k``.
     """
-    if k < 1:
-        raise ValueError(f"k is {k}; expected an integer >= 1")
     n_k = np.asarray(n_k)
     if n_k.ndim != 1 or n_k.size == 0:
         raise ValueError(f"n_k has shape {n_k.shape}; expected a non-empty 1-D array")
@@ -67,6 +63,6 @@ def k_occurrence_summary(n_k: np.ndarray, k: int) -> dict[str, float]:
     return {
         "skewness": float(skew(values, bias=True)) if values.std() > 0 else 0.0,
         "antihub_fraction": float((n_k == 0).mean()),
-        "hub_fraction": float((n_k > 2 * k).mean()),
+        "hub_fraction": float((values > 2 * values.mean()).mean()),
         "max_k_occurrence": float(n_k.max()),
     }

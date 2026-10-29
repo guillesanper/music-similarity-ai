@@ -193,7 +193,7 @@ musicsim show configs/experiments/e01_mfcc_baseline.yaml     # resolve it, run n
 | **e01** MFCC baseline | Does the MFCC embedding retrieve same-genre neighbours better than chance? | `metrics/per_query.csv`, `metrics/retrieval.csv`, `metrics/retrieval_per_genre.csv`, `graphs/mfcc/{neighbors.npz, edges.csv, duplicates.csv}` |
 | **e01 (MERT)** MERT baseline | Does MERT's titular layer retrieve same-genre neighbours better than MFCC and chance? | same `metrics/` files, with `mert` as the main representation and `mfcc`/`random` as baselines |
 | **e02** PCA ablation | Does reducing MFCC's 80 dimensions cost retrieval quality? | same `metrics/` files, one run per `-o embedding.pca.n_components=` override (16, 32, 48) |
-| **e03** Graph structure | Do different representations induce kNN graphs with different structure? | `metrics/graph_structure.csv` (hubness skewness, Gini and antihubs of the in-degree, reciprocity, components, genre homophily), `metrics/in_degree.csv`; `mfcc` vs. the `random` control on `fma_test` and `fma_all` |
+| **e03** Graph structure | Do different representations induce kNN graphs with different structure? | `metrics/structure.csv` (k-occurrence skewness, antihub and hub fractions, reciprocity, clustering, components, genre homophily), `metrics/hubness.csv` (k-occurrence per item); `mfcc` vs. the `random` control on `fma_test` and `fma_all` |
 
 Later phases add one row each: human triplets, classical
 classification, graph variants, robustness, model comparison, fuzzy modelling
@@ -300,7 +300,7 @@ acceptance criterion and adds its draft of the corresponding report section.
 | **S1 Baselines** | kNN graph, near-duplicate detection, retrieval metrics (Recall@K, MAP, nDCG@10, P@10) over the `fma_test`/`fma_all` galleries, clustered bootstrap with Holm correction; e01, e02 | **done** |
 | **S1 Baselines** | `mert` extractor (13 layers) and titular layer selection on real FMA validation data | **done** |
 | **S1 Baselines** | e01 (MERT): full `fma_test`/`fma_all` comparison against `mfcc`/`random` | **pending** — extractor and config are ready (`configs/experiments/e01_mert_baseline.yaml`); the full `fma_small` extraction costs ~9h of CPU time, so it awaits either that time budget or GPU acceleration |
-| **S2 Graphs** | Structure and hubness of the kNN graph (`graph_structure` evaluator, e03) | **done** — on `fma_all`, MFCC hubness skewness 4.70 / reciprocity 0.22 / homophily 0.33 vs. `random` 0.31 / 0.82 / 0.12 |
+| **S2 Graphs** | Structure and hubness of the kNN graph (`structure` evaluator, e03) | **in progress** — done: hubness, reciprocity, homophily, clustering and components. Missing: communities (NMI against genre), subsampling confidence intervals, comparison between graphs, export, figures. No figures are quoted until a reproducible run with near-duplicates collapsed exists |
 | **S2 Graphs** | Graph variants and robustness, similarity measures, fuzzy graphs and memberships | pending |
 | **S2 Graphs** | MagnaTagATune ground truth; classical classification and probing | pending |
 | **S3 Siamese** | Siamese (spectrogram, embedding, descriptors), triplet and CNN | pending |

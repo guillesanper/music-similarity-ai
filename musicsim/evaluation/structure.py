@@ -1,102 +1,99 @@
-"""Graph-structure evaluation: hubness, reciprocity, connectivity and genre
-homophily of the kNN graph each representation induces.
+"""Structural statistics of a kNN graph: label homophily, reciprocity, clustering
+and connectivity.
 
-For every representation and gallery it builds the canonical kNN graph
-(``graph.k``, ``graph.metric`` as configured) *inside the gallery*, so nodes
-and neighbours never reach outside it, and writes:
+These are pure functions; choosing galleries and writing CSVs is the job of
+:mod:`musicsim.evaluation.graph_evaluator`, and hubness lives in
+:mod:`musicsim.evaluation.hubness`.
 
-``graph_structure.csv``
-    ``representation, gallery, metric, value`` — one row per statistic of
-    :func:`musicsim.graphs.structure.structure_summary`.
-``in_degree.csv``
-    ``representation, gallery, item_id, in_degree`` — the k-occurrence of every
-    node, which is what the hubness figures are drawn from.
+Every function derives its edges from :func:`musicsim.graphs.adjacency.to_csr`,
+the single place that decides what an edge is: padding slots, self-loops and
+repeated neighbours are not edges. Homophily and reciprocity use the directed
+view; clustering and components use the undirected union (``i - j`` if either
+direction exists), which is what :func:`to_csr` returns with
+``symmetrize="union"``.
 
-Statistics are graph-level (one graph, one number), so no bootstrap interval is
-attached; whether two representations differ significantly on them is the
-business of the paired comparison of a later phase.
+Label homophily is the share of directed edges whose endpoints share a label.
+On a kNN graph built without removing near-duplicates, and with the same
+relevance labels, it is exactly the mean precision at ``k`` of the retrieval
+evaluator. It is reported here as a structure metric, not as a second retrieval
+number, and the report must say so.
 """
 
 from __future__ import annotations
 
-import pandas as pd
+import numpy as np
+from scipy import sparse
+from scipy.sparse import csgraph
 
-from musicsim.evaluation.base import Evaluator
-from musicsim.evaluation.retrieval import _representation_specs
-from musicsim.galleries import gallery_mask
-from musicsim.registry import register_evaluator
-from musicsim.representations import load_aligned_representations
-from musicsim.runlog import RunLog
+from musicsim.graphs.adjacency import to_csr
+from musicsim.graphs.base import Graph
 
-__all__ = ["GraphStructureEvaluator"]
+__all__ = ["component_summary", "label_homophily", "mean_clustering", "reciprocity"]
 
 
-@register_evaluator("graph_structure")
-class GraphStructureEvaluator(Evaluator):
-    """Structural statistics of the kNN graph of the main extractor plus its baselines.
+def label_homophily(graph: Graph, labels: np.ndarray) -> float:
+    """Fraction of directed edges whose two endpoints share a label.
 
-    Reads ``evaluation.graph_structure`` (``enabled``, ``galleries``,
-    ``baselines``); ``representations`` at the top level works as it does for
-    retrieval, and ``graph.k`` / ``graph.builder`` come from the shared graph
-    section. Evaluation is off unless the experiment turns it on.
+    ``labels`` holds one integer code per node. Raises ``ValueError`` if the
+    graph has no edge: ``0.0`` there would be indistinguishable from a graph
+    with no homophily at all.
     """
-
-    def evaluate(self, index: pd.DataFrame, run: RunLog) -> None:
-        from musicsim.graphs.base import build_graph
-        from musicsim.graphs.structure import in_degree, structure_summary
-        from musicsim.registry import RELEVANCES
-
-        stage_cfg = self.config.section("evaluation").get("graph_structure", {})
-        if not stage_cfg.get("enabled", False):
-            return
-
-        main_name = self.config.require("extractor.name")
-        specs = _representation_specs(self.config, stage_cfg, main_name)
-        loaded = load_aligned_representations(self.config, index, specs)
-        relevance = RELEVANCES.get(self.config.get("retrieval.relevance", "label_match"))(
-            self.config
+    labels = np.asarray(labels)
+    if labels.shape != (graph.n_nodes,):
+        raise ValueError(
+            f"labels {labels.shape} does not have one entry per node ({graph.n_nodes})"
         )
+    edges = to_csr(graph).tocoo()
+    if edges.nnz == 0:
+        raise ValueError(f"graph with {graph.n_nodes} nodes has no edges; homophily is undefined")
+    return float((labels[edges.row] == labels[edges.col]).mean())
 
-        galleries = stage_cfg.get("galleries", self.config.get("retrieval.gallery", "fma_test"))
-        if isinstance(galleries, str):
-            galleries = [galleries]
 
-        graph_cfg = self.config.section("graph")
-        rows: list[dict] = []
-        degree_frames: list[pd.DataFrame] = []
-        for gallery_name in galleries:
-            mask = gallery_mask(loaded.index, gallery_name)
-            gallery_ids = loaded.ids[mask]
-            if len(gallery_ids) == 0:
-                raise ValueError(f"gallery {gallery_name!r} selects no item")
-            labels = relevance.label_codes(index, gallery_ids)
-            for spec in specs:
-                graph = build_graph(loaded.X[spec.label][mask], gallery_ids, graph_cfg)
-                summary = structure_summary(graph, labels)
-                rows.extend(
-                    {
-                        "representation": spec.label,
-                        "gallery": gallery_name,
-                        "metric": metric,
-                        "value": value,
-                    }
-                    for metric, value in summary.items()
-                )
-                degree_frames.append(
-                    pd.DataFrame(
-                        {
-                            "representation": spec.label,
-                            "gallery": gallery_name,
-                            "item_id": gallery_ids,
-                            "in_degree": in_degree(graph),
-                        }
-                    )
-                )
+def reciprocity(graph: Graph) -> float:
+    """Fraction of directed edges ``i -> j`` whose reverse ``j -> i`` also exists.
 
-        pd.DataFrame(rows).to_csv(run.metrics_dir / "graph_structure.csv", index=False)
-        pd.concat(degree_frames, ignore_index=True).to_csv(
-            run.metrics_dir / "in_degree.csv", index=False
-        )
-        run.logger.info(
-            "graph_structure: %d representation(s), %d galler(y/ies)", len(specs), len(galleries)
-        )
+    Raises ``ValueError`` if the graph has no edge.
+    """
+    A = to_csr(graph)
+    if A.nnz == 0:
+        raise ValueError(f"graph with {graph.n_nodes} nodes has no edges; reciprocity is undefined")
+    return float(A.multiply(A.T).nnz / A.nnz)
+
+
+def mean_clustering(adjacency: sparse.csr_matrix) -> float:
+    """Mean local clustering coefficient of a symmetric binary adjacency matrix.
+
+    The local coefficient of node ``i`` is ``2 * t_i / (d_i * (d_i - 1))``, with
+    ``d_i`` its degree and ``t_i`` the triangles through it; it is ``0`` when
+    ``d_i < 2``. The mean runs over *all* nodes, the convention of
+    ``networkx.average_clustering``. Triangles come from sparse products, never
+    from a dense matrix.
+    """
+    n = adjacency.shape[0]
+    if adjacency.shape != (n, n):
+        raise ValueError(f"adjacency has shape {adjacency.shape}; expected a square matrix")
+    A = adjacency.copy()
+    A.data[:] = 1.0
+    degree = np.diff(A.indptr).astype(np.float64)
+    # (A @ A)[i, j] counts the paths i - m - j; masked by A it keeps those closed by an
+    # edge i - j, so the row sum is twice the number of triangles through i.
+    closed_paths = np.asarray(A.multiply(A @ A).sum(axis=1)).ravel()
+    pairs = degree * (degree - 1)
+    local = np.divide(closed_paths, pairs, out=np.zeros(n), where=pairs > 0)
+    return float(local.mean())
+
+
+def component_summary(adjacency: sparse.csr_matrix) -> dict[str, float]:
+    """``n_components`` and ``giant_fraction`` (share of nodes in the largest component).
+
+    Components are weak: edge direction is ignored. A node without edges is its
+    own component.
+    """
+    n_components, labels = csgraph.connected_components(
+        adjacency, directed=True, connection="weak"
+    )
+    sizes = np.bincount(labels)
+    return {
+        "n_components": float(n_components),
+        "giant_fraction": float(sizes.max() / adjacency.shape[0]),
+    }
