@@ -11,10 +11,15 @@ from musicsim.evaluation.bootstrap import (
     bootstrap_means,
     bootstrap_pvalue,
     holm_correction,
+    paired_artist_subsample,
     paired_bootstrap_ci,
     paired_bootstrap_test,
+    percentile_interval,
     seed_variability_table,
 )
+
+# 30 artists with 1 to 3 items each, so artists are of unequal size.
+ARTIST_IDS = np.repeat(np.arange(30), np.tile([1, 2, 3], 10))
 
 
 def test_bootstrap_ci_of_a_constant_is_a_point() -> None:
@@ -193,6 +198,75 @@ def test_holm_correction_handles_unsorted_input_by_original_order() -> None:
 
     np.testing.assert_allclose(shuffled.adjusted_pvalues, ascending.adjusted_pvalues[mapping])
     assert shuffled.reject.tolist() == [ascending.reject[i] for i in mapping]
+
+
+def test_artist_subsample_is_reproducible_with_the_same_seed() -> None:
+    first = paired_artist_subsample(ARTIST_IDS, n_replicates=20, seed=4)
+    second = paired_artist_subsample(ARTIST_IDS, n_replicates=20, seed=4)
+    assert first.shape == (20, len(ARTIST_IDS))
+    assert first.dtype == bool
+    np.testing.assert_array_equal(first, second)
+
+
+def test_artist_subsample_differs_between_seeds() -> None:
+    first = paired_artist_subsample(ARTIST_IDS, n_replicates=20, seed=4)
+    second = paired_artist_subsample(ARTIST_IDS, n_replicates=20, seed=5)
+    assert not np.array_equal(first, second)
+
+
+def test_artist_subsample_never_splits_an_artist() -> None:
+    masks = paired_artist_subsample(ARTIST_IDS, n_replicates=50, seed=1)
+    for artist in np.unique(ARTIST_IDS):
+        per_artist = masks[:, artist == ARTIST_IDS]
+        assert (per_artist.all(axis=1) | ~per_artist.any(axis=1)).all()
+
+
+def test_artist_subsample_draws_round_fraction_of_the_artists_per_replicate() -> None:
+    masks = paired_artist_subsample(ARTIST_IDS, n_replicates=50, seed=1)
+    # Take the first item of each artist as its representative.
+    first_items = np.unique(ARTIST_IDS, return_index=True)[1]
+    assert (masks[:, first_items].sum(axis=1) == round(0.8 * 30)).all()
+
+
+def test_artist_subsample_rounds_to_the_nearest_artist_count() -> None:
+    ids = np.arange(7)  # 0.8 * 7 = 5.6 -> 6 artists, one item each
+    masks = paired_artist_subsample(ids, n_replicates=10, seed=0)
+    assert (masks.sum(axis=1) == 6).all()
+
+
+def test_artist_subsample_with_full_fraction_selects_everything() -> None:
+    masks = paired_artist_subsample(ARTIST_IDS, n_replicates=5, fraction=1.0, seed=0)
+    assert masks.all()
+
+
+@pytest.mark.parametrize("fraction", [0.0, -0.1, 1.5])
+def test_artist_subsample_rejects_fraction_outside_zero_one(fraction: float) -> None:
+    with pytest.raises(ValueError, match="fraction"):
+        paired_artist_subsample(ARTIST_IDS, fraction=fraction)
+
+
+def test_artist_subsample_rejects_no_replicates() -> None:
+    with pytest.raises(ValueError, match="n_replicates"):
+        paired_artist_subsample(ARTIST_IDS, n_replicates=0)
+
+
+def test_artist_subsample_rejects_a_fraction_that_selects_no_artist() -> None:
+    with pytest.raises(ValueError, match="no artist"):
+        paired_artist_subsample(np.arange(3), fraction=0.1)
+
+
+def test_percentile_interval_of_a_constant_is_a_point() -> None:
+    assert percentile_interval(np.full(40, 0.7)) == (0.7, 0.7)
+
+
+def test_percentile_interval_matches_a_hand_worked_example() -> None:
+    # 0..100 inclusive: the 2.5 % and 97.5 % quantiles are exactly 2.5 and 97.5.
+    assert percentile_interval(np.arange(101.0)) == pytest.approx((2.5, 97.5))
+
+
+def test_percentile_interval_rejects_bad_confidence() -> None:
+    with pytest.raises(ValueError, match="confidence"):
+        percentile_interval(np.zeros(3), confidence=1.0)
 
 
 def test_seed_variability_table_reports_mean_and_std_per_group() -> None:
