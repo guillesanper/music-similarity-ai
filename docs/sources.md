@@ -364,6 +364,28 @@ graphs they induce (SQ3, the noise-floor and dose-response analysis).
 
 ---
 
+## Graph structure
+
+### `Radovanovic2010` — Hubs in Space: Popular Nearest Neighbors in High-Dimensional Data `[to read]`
+<https://www.jmlr.org/papers/v11/radovanovic10a.html>
+
+Miloš Radovanović, Alexandros Nanopoulos and Mirjana Ivanović. *Journal of
+Machine Learning Research* 11, 2010, pp. 2487–2531 (venue, volume, pages and
+authors checked against the JMLR page; the paper itself is not yet read).
+
+*What it gives.* The definition of hubness: the k-occurrence `N_k` of a point
+becomes right-skewed in high dimension, so a few *hubs* appear in many
+neighbour lists and many *antihubs* in none. Its skewness is the standard
+summary.
+
+*Where it is used.* `musicsim/evaluation/hubness.py` and the hubness metrics of
+experiment `e03`.
+
+*Open item.* Not yet in `report/bibliography.bib`; add it when it is promoted
+to `[verified]`.
+
+---
+
 ## Tools
 
 Cited because V.11 requires third-party software to be credited and its licence

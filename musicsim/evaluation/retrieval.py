@@ -61,15 +61,10 @@ from collections.abc import Sequence
 import numpy as np
 import pandas as pd
 
-from musicsim.config import Config, ConfigError
 from musicsim.evaluation.base import Evaluator
 from musicsim.galleries import GALLERIES, gallery_mask
 from musicsim.registry import register_evaluator
-from musicsim.representations import (
-    RepresentationSpec,
-    load_aligned_representations,
-    parse_representations,
-)
+from musicsim.representations import load_aligned_representations, stage_representations
 from musicsim.runlog import RunLog
 
 __all__ = [
@@ -179,34 +174,6 @@ def _append(
     out["value"].extend(values.tolist())
 
 
-def _representation_specs(
-    config: Config, stage_cfg: dict, main_name: str
-) -> list[RepresentationSpec]:
-    """The representations to evaluate: ``representations:``, or main + ``baselines``.
-
-    The two ways of listing them are mutually exclusive: with both present it
-    would be unclear which one wins. Near-duplicates are always detected on the
-    main representation (``extractor.name``), so it must be among them.
-    """
-    baselines = stage_cfg.get("baselines", [])
-    if config.get("representations") is not None:
-        if baselines:
-            raise ConfigError(
-                "'representations' and 'evaluation.retrieval.baselines' are both set "
-                f"(baselines={list(baselines)!r}); use only one of them"
-            )
-        specs = parse_representations(config)
-        labels = [spec.label for spec in specs]
-        if main_name not in labels:
-            raise ConfigError(
-                f"the main representation {main_name!r} (extractor.name) must be listed "
-                f"in 'representations', got labels {labels}"
-            )
-        return specs
-    names = [main_name, *(name for name in baselines if name != main_name)]
-    return [RepresentationSpec(label=name, extractor=name, overrides={}) for name in names]
-
-
 @register_evaluator("retrieval")
 class RetrievalEvaluator(Evaluator):
     """Retrieval evaluation for the configured extractor plus its baselines.
@@ -243,7 +210,7 @@ class RetrievalEvaluator(Evaluator):
             return
 
         main_name = self.config.require("extractor.name")
-        specs = _representation_specs(self.config, stage_cfg, main_name)
+        specs = stage_representations(self.config, stage_cfg, main_name, "retrieval")
         names = [spec.label for spec in specs]
 
         loaded = load_aligned_representations(self.config, index, specs)

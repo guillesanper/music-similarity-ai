@@ -18,6 +18,7 @@ from musicsim.representations import (
     load_aligned_representations,
     parse_representations,
     spec_config,
+    stage_representations,
 )
 
 _N = 10
@@ -91,6 +92,33 @@ def test_spec_config_applies_nested_overrides_on_top_of_the_swapped_extractor() 
     assert out.require("seed") == 9
     assert out.require("embedding.pca.n_components") == 5
     assert out.require("dataset.directory") == "toy_rep"
+
+
+# --- the representations of an evaluator ---------------------------------------
+def test_stage_representations_without_the_key_is_main_plus_baselines() -> None:
+    specs = stage_representations(
+        _config(), {"baselines": ["random", "toy_rep_main"]}, "toy_rep_main", "retrieval"
+    )
+    assert [s.label for s in specs] == ["toy_rep_main", "random"]
+    assert all(s.overrides == {} for s in specs)
+
+
+def test_stage_representations_uses_the_listed_representations() -> None:
+    specs = stage_representations(
+        _config(["toy_rep_main", "random"]), {}, "toy_rep_main", "structure"
+    )
+    assert [s.label for s in specs] == ["toy_rep_main", "random"]
+
+
+def test_stage_representations_rejects_both_ways_of_listing() -> None:
+    config = _config(["toy_rep_main", "random"])
+    with pytest.raises(ConfigError, match=r"'evaluation\.structure\.baselines' are both set"):
+        stage_representations(config, {"baselines": ["random"]}, "toy_rep_main", "structure")
+
+
+def test_stage_representations_requires_the_main_representation_in_the_list() -> None:
+    with pytest.raises(ConfigError, match="main representation 'toy_rep_main'"):
+        stage_representations(_config(["random"]), {}, "toy_rep_main", "retrieval")
 
 
 # --- aligned loading -----------------------------------------------------------

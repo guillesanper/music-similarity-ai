@@ -39,6 +39,7 @@ __all__ = [
     "load_aligned_representations",
     "parse_representations",
     "spec_config",
+    "stage_representations",
 ]
 
 _LABEL = re.compile(r"[a-z0-9_]+")
@@ -119,6 +120,36 @@ def _parse_entry(entry: Any) -> RepresentationSpec:
                 "every representation must share the dataset and cannot redefine the list"
             )
     return RepresentationSpec(label=label, extractor=extractor, overrides=dict(overrides))
+
+
+def stage_representations(
+    config: Config, stage_cfg: dict, main_name: str, stage: str
+) -> list[RepresentationSpec]:
+    """The representations an evaluator scores: ``representations:``, or main + ``baselines``.
+
+    The two ways of listing them are mutually exclusive: with both present it
+    would be unclear which one wins. ``stage`` is the evaluator's name
+    (``evaluation.<stage>``), used in error messages. Near-duplicates are
+    detected on one representation (the main one, ``extractor.name``, unless the
+    evaluator says otherwise), so the main representation must be among them.
+    """
+    baselines = stage_cfg.get("baselines", [])
+    if config.get("representations") is not None:
+        if baselines:
+            raise ConfigError(
+                f"'representations' and 'evaluation.{stage}.baselines' are both set "
+                f"(baselines={list(baselines)!r}); use only one of them"
+            )
+        specs = parse_representations(config)
+        labels = [spec.label for spec in specs]
+        if main_name not in labels:
+            raise ConfigError(
+                f"the main representation {main_name!r} (extractor.name) must be listed "
+                f"in 'representations', got labels {labels}"
+            )
+        return specs
+    names = [main_name, *(name for name in baselines if name != main_name)]
+    return [RepresentationSpec(label=name, extractor=name, overrides={}) for name in names]
 
 
 def spec_config(config: Config, spec: RepresentationSpec) -> Config:
