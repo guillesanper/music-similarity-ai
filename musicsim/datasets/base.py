@@ -8,12 +8,23 @@ under ``configs/datasets/``, never editing the CLI.
 Every corpus produces the same index shape (:data:`INDEX_COLUMNS`) so that
 downstream code (feature extraction, the graph, the evaluation) never branches
 on which dataset it is looking at.
+
+A corpus may carry facts the others do not have (MagnaTagATune's
+``in_triplets`` flag, for instance). It declares them in
+:attr:`Dataset.extra_columns` and :meth:`Dataset.write_index` writes them after
+the common columns. The common columns always come first and in the same order,
+so every index starts with the same seven columns whichever corpus wrote it.
+The extra columns must be declared because the index is a contract read by
+every later stage: an undeclared column is refused rather than written or
+dropped silently, so a typo or a leftover helper column in
+:meth:`Dataset.build_index` fails loudly. Both rules are our own design choice.
 """
 
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from pathlib import Path
+from typing import ClassVar
 
 import pandas as pd
 
@@ -48,6 +59,9 @@ class DatasetError(ValueError):
 
 class Dataset(ABC):
     """One corpus: how to fetch its files and how to build its item index."""
+
+    extra_columns: ClassVar[tuple[str, ...]] = ()
+    """Corpus-specific index columns, written after :data:`INDEX_COLUMNS` in this order."""
 
     def __init__(self, config: Config) -> None:
         self.config = config
@@ -93,12 +107,25 @@ class Dataset(ABC):
         """
 
     def write_index(self) -> Path:
-        """Build the index and write it to :attr:`index_path`; return that path."""
+        """Build the index and write it to :attr:`index_path`; return that path.
+
+        The file holds :data:`INDEX_COLUMNS` followed by :attr:`extra_columns`,
+        in that order. A column of either kind missing from
+        :meth:`build_index`'s frame, or a column that is in neither, raises
+        :class:`DatasetError`.
+        """
         frame = self.build_index()
-        missing = [column for column in INDEX_COLUMNS if column not in frame.columns]
+        expected = [*INDEX_COLUMNS, *self.extra_columns]
+        missing = [column for column in expected if column not in frame.columns]
         if missing:
             raise DatasetError(f"{self.name}: build_index() is missing columns {missing}")
-        frame = frame[list(INDEX_COLUMNS)]
+        undeclared = [column for column in frame.columns if column not in expected]
+        if undeclared:
+            raise DatasetError(
+                f"{self.name}: build_index() returned undeclared columns {undeclared}; "
+                f"expected only {expected}. Add them to extra_columns or drop them."
+            )
+        frame = frame[expected]
         self.index_path.parent.mkdir(parents=True, exist_ok=True)
         frame.to_csv(self.index_path, index=False)
         return self.index_path
