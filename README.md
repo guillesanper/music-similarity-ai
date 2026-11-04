@@ -33,9 +33,11 @@ Everything an experiment needs is code plus one configuration file: no manual
 steps, no constants to edit. Methodological detail lives in [`docs/`](docs/) and
 in the report under [`report/`](report/), not in this file.
 
-> **Status.** The MFCC baseline is the current milestone: FMA download and
-> indexing, feature extraction, the kNN graph and the first retrieval metrics.
-> See [Status](#status) for what runs today and what each stage still waits for.
+> **Status.** The current milestone is the comparison of MERT against the MFCC
+> baseline on FMA. Both run end to end, and the first MERT results are in
+> [MERT](#mert); they are provisional until the paired comparison with Holm
+> correction and the MagnaTagATune evaluation are done. See [Status](#status)
+> for what runs today and what each stage still waits for.
 
 ## Contents
 
@@ -262,9 +264,30 @@ agree to float tolerance, not bit for bit), and the cache directory
 (`outputs/cache/fma/mert-layers-*`, about 160 MB for `fma_small`) can simply be
 copied to another machine. `extractor.precision: float16` (autocast, off by
 default) is available but should only be switched on after checking that it
-agrees with `float32`. Timings on a GPU have not been measured yet; the
+agrees with `float32`. On a single CUDA GPU the full `fma_small` extraction
+(7994 tracks) took **27 minutes**, against roughly 9 hours on the CPU; the
 `gpu`-marked tests (`pytest -m gpu`) check the device path on a machine that
 has one and skip themselves otherwise.
+
+e01 (MERT) on `fma_test` (dedup, headline metrics, 95 % intervals by
+bootstrap over artists), from the run of
+`configs/experiments/e01_mert_baseline.yaml` at commit `63f2ae1`:
+
+| Representation | R@10 | MAP | nDCG@10 |
+|---|---|---|---|
+| `mert` (layer 6) | 0.059 [0.049, 0.066] | 0.361 [0.297, 0.415] | 0.609 [0.526, 0.672] |
+| `mfcc` | 0.035 [0.029, 0.040] | 0.240 [0.209, 0.271] | 0.364 [0.299, 0.419] |
+| `random` | 0.013 [0.012, 0.014] | 0.132 [0.130, 0.133] | 0.129 [0.120, 0.137] |
+
+These figures are **provisional**. The intervals belong to each representation
+separately: the paired difference between `mert` and `mfcc`, with the same
+resampled artists for both and Holm correction, is still pending. Relevance is
+`genre_top`, so the table measures similarity by genre labels only; the
+external evaluation against human judgements on MagnaTagATune is also pending.
+`mfcc`'s nDCG@10 differs from the reference in
+[Running experiments](#running-experiments) in the third decimal because
+near-duplicates are detected on the experiment's main representation, here
+`mert`.
 
 Expensive artefacts are cached under the hash of the configuration that produced
 them, so re-running with unchanged parameters reuses the result. Every run also
@@ -299,10 +322,12 @@ acceptance criterion and adds its draft of the corresponding report section.
 | **S1 Baselines** | Audio, log-mel cache, `mfcc` and `random` extractors, embeddings | **done** |
 | **S1 Baselines** | kNN graph, near-duplicate detection, retrieval metrics (Recall@K, MAP, nDCG@10, P@10) over the `fma_test`/`fma_all` galleries, clustered bootstrap with Holm correction; e01, e02 | **done** |
 | **S1 Baselines** | `mert` extractor (13 layers) and titular layer selection on real FMA validation data | **done** |
-| **S1 Baselines** | e01 (MERT): full `fma_test`/`fma_all` comparison against `mfcc`/`random` | **pending** — extractor and config are ready (`configs/experiments/e01_mert_baseline.yaml`); the full `fma_small` extraction costs ~9h of CPU time, so it awaits either that time budget or GPU acceleration |
+| **S1 Baselines** | e01 (MERT): full `fma_test`/`fma_all` comparison against `mfcc`/`random` | **done** — extracted on a GPU in 27 minutes; provisional results in [MERT](#mert) |
+| **S1 Baselines** | Paired MERT–MFCC difference with Holm correction | pending |
 | **S2 Graphs** | Structure and hubness of the kNN graph (`structure` evaluator, e03) | **in progress** — done: hubness, reciprocity, homophily, clustering, components, near-duplicate collapsing and writing the graphs to disk. Missing: communities (NMI against genre), subsampling confidence intervals, comparison between graphs, export, figures. Point estimates on `fma_test` (795 nodes after collapsing 5 near-duplicates, k = 10, no confidence intervals): k-occurrence skewness 2.37 for `mfcc` vs. 0.18–0.44 for three `random` seeds, label homophily 0.35 vs. 0.12–0.13, reciprocity 0.34 vs. 0.83 |
 | **S2 Graphs** | Graph variants and robustness, similarity measures, fuzzy graphs and memberships | pending |
-| **S2 Graphs** | MagnaTagATune ground truth; classical classification and probing | pending |
+| **S2 Graphs** | MagnaTagATune ground truth and human-triplet evaluation | pending |
+| **S2 Graphs** | Classical classification and probing | pending |
 | **S3 Siamese** | Siamese (spectrogram, embedding, descriptors), triplet and CNN | pending |
 | **S4 Comparison** | Paired model comparison, export, final writing | pending |
 | **S5 Extension** | Graph neural network for link prediction | deferred until S4 is reproducible |
