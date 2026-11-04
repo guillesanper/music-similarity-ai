@@ -289,6 +289,45 @@ external evaluation against human judgements on MagnaTagATune is also pending.
 near-duplicates are detected on the experiment's main representation, here
 `mert`.
 
+#### Precomputed MERT layers
+
+**Not published yet.** The 13-layer cache for `fma_small` is packaged so that
+it can be downloaded instead of extracted, but whether it may be published
+depends on the licences of the FMA tracks: about a third of them forbid
+derivatives. [`docs/redistribution.md`](docs/redistribution.md) gives the count
+and the open question. Until it is answered, the link below is a placeholder
+and the only way to get the cache is to extract it.
+
+| Item | Value |
+|---|---|
+| File | `mert-layers-22171214-fma_small.tgz` (148 681 433 bytes) |
+| Download | `<release URL>` |
+| SHA-256 | `85fa3597013c913d1098c9385e7e06e823f6cd706caa7c5bf6778e7c75b01f45` |
+| Content | 7994 files `<track_id>.npy`, each `13 × 768` `float16`; no audio, no model weights |
+
+Check the hash, then unpack into `outputs/cache/fma/`, which creates
+`outputs/cache/fma/mert-layers-22171214/`:
+
+```bash
+sha256sum mert-layers-22171214-fma_small.tgz                        # Linux
+shasum -a 256 mert-layers-22171214-fma_small.tgz                    # macOS
+Get-FileHash -Algorithm SHA256 mert-layers-22171214-fma_small.tgz   # Windows (PowerShell)
+
+mkdir -p outputs/cache/fma                                          # Windows: New-Item -ItemType Directory -Force outputs/cache/fma
+tar -xzf mert-layers-22171214-fma_small.tgz -C outputs/cache/fma
+python -c "import pathlib; print(sum(1 for _ in pathlib.Path('outputs/cache/fma/mert-layers-22171214').glob('*.npy')))"
+```
+
+The last command must print **7994**. `tar` ships with Windows 10 and later.
+
+`22171214` is the cache key: the hash of the `audio` settings and of the model
+settings that determine the arrays (name, revision, window length, number of
+layers, hidden size). Running `configs/experiments/e01_mert_baseline.yaml`, or
+any experiment that composes the same FMA audio settings and `mert` extractor,
+the extractor finds these files and skips the extraction. If any of those settings
+changes, the key changes, the cache is ignored and MERT is extracted again. The
+titular layer, the device and the batch settings are not part of the key.
+
 Expensive artefacts are cached under the hash of the configuration that produced
 them, so re-running with unchanged parameters reuses the result. Every run also
 records the git commit, whether the tree was dirty, dependency versions, the
