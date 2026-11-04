@@ -8,7 +8,12 @@ import pytest
 from sklearn.preprocessing import StandardScaler
 
 from musicsim.config import Config
-from musicsim.embeddings import EmbeddingError, build_embeddings
+from musicsim.embeddings import (
+    EmbeddingError,
+    build_embeddings,
+    embeddings_cache_dir,
+    features_cache_dir,
+)
 
 
 def _index() -> pd.DataFrame:
@@ -105,3 +110,59 @@ def test_standardize_and_pca_can_both_be_disabled() -> None:
     config = _config(standardize=False, l2_normalize=False)
     Z, _ = build_embeddings(_features(), _ids(), _index(), config)
     np.testing.assert_allclose(Z, _features(), rtol=1e-5, atol=1e-5)
+
+
+def _full_config(**overrides: object) -> Config:
+    data: dict = {
+        "experiment": "a",
+        "stages": ["extract"],
+        "seed": 42,
+        "dataset": {"directory": "toy"},
+        "audio": {"sample_rate": 22050},
+        "spectrogram": {"n_mels": 128},
+        "extractor": {"name": "mfcc", "n_mfcc": 20},
+        "embedding": {"standardize": True},
+        "graph": {"k": 10},
+        "evaluation": {"retrieval": {"enabled": True}},
+        "bootstrap": {"n_resamples": 100},
+        "runtime": {"n_jobs": 1, "cache": True},
+        "outputs": {"figures": True},
+    }
+    data.update(overrides)
+    return Config(data=data)
+
+
+def test_unrelated_sections_do_not_change_either_cache_directory() -> None:
+    base = _full_config()
+    other = _full_config(
+        experiment="b",
+        stages=["evaluate"],
+        graph={"k": 20},
+        evaluation={"structure": {"enabled": True}},
+        bootstrap={"n_resamples": 5},
+        runtime={"n_jobs": 8, "cache": False},
+        outputs={"figures": False},
+    )
+    assert features_cache_dir(base) == features_cache_dir(other)
+    assert embeddings_cache_dir(base) == embeddings_cache_dir(other)
+
+
+@pytest.mark.parametrize(
+    "override",
+    [
+        {"dataset": {"directory": "toy2"}},
+        {"audio": {"sample_rate": 16000}},
+        {"spectrogram": {"n_mels": 64}},
+        {"extractor": {"name": "mfcc", "n_mfcc": 13}},
+        {"seed": 7},
+    ],
+)
+def test_feature_relevant_sections_change_the_features_directory(override: dict) -> None:
+    assert features_cache_dir(_full_config()) != features_cache_dir(_full_config(**override))
+
+
+def test_the_embedding_section_changes_only_the_embeddings_directory() -> None:
+    base = _full_config()
+    other = _full_config(embedding={"standardize": False})
+    assert features_cache_dir(base) == features_cache_dir(other)
+    assert embeddings_cache_dir(base) != embeddings_cache_dir(other)

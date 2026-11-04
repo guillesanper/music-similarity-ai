@@ -1,0 +1,58 @@
+# E03 - Do different representations induce kNN graphs with different structure?
+# Hubness (k-occurrence skewness, antihubs), reciprocity, clustering, connectivity
+# and genre homophily of the MFCC graph, of its PCA reductions and of the random
+# control. Answers the structural half of the main question. Report: section
+# 06_results, "Graph structure".
+
+defaults:
+  - ../base.yaml
+  - ../datasets/fma_small.yaml
+  - ../extractors/mfcc.yaml
+
+experiment: e03_graph_structure
+
+# The representations are extracted and embedded by the evaluator itself.
+stages: [evaluate]
+
+# The random extractor is the chance floor: its hubness and homophily are what a
+# graph carrying no information looks like. Three seeds show how much that floor
+# moves from one draw to the next.
+representations:
+  - mfcc
+  - label: mfcc_pca16
+    extractor: mfcc
+    overrides: {embedding.pca.enabled: true, embedding.pca.n_components: 16}
+  - label: mfcc_pca32
+    extractor: mfcc
+    overrides: {embedding.pca.enabled: true, embedding.pca.n_components: 32}
+  - label: mfcc_pca48
+    extractor: mfcc
+    overrides: {embedding.pca.enabled: true, embedding.pca.n_components: 48}
+  - label: mfcc_pca64
+    extractor: mfcc
+    overrides: {embedding.pca.enabled: true, embedding.pca.n_components: 64}
+  - label: random_s0
+    extractor: random
+    overrides: {seed: 0}
+  - label: random_s1
+    extractor: random
+    overrides: {seed: 1}
+  - label: random_s2
+    extractor: random
+    overrides: {seed: 2}
+
+evaluation:
+  retrieval:
+    enabled: false
+  structure:
+    enabled: true
+    # fma_test (~800 items, unseen artists) is the main gallery. For the whole
+    # corpus add `-o evaluation.structure.galleries=[fma_all]` to the command.
+    galleries: [fma_test]
+    # Near-duplicates are collapsed on this representation, once per gallery, so
+    # every graph has the same nodes.
+    reference: mfcc
+
+outputs:
+  metrics: [structure.csv, hubness.csv]
+  figures: []

@@ -28,6 +28,7 @@ import musicsim.graphs
 import musicsim.relevance  # noqa: F401  (registers the "label_match" relevance function)
 from musicsim import paths
 from musicsim.config import Config, ConfigError
+from musicsim.evaluation.base import Evaluator
 from musicsim.experiments import (
     embed_stage,
     extract_stage,
@@ -35,7 +36,8 @@ from musicsim.experiments import (
     run_experiment,
 )
 from musicsim.extractors.base import Extractor
-from musicsim.registry import register_extractor
+from musicsim.registry import EVALUATORS, register_extractor
+from musicsim.runlog import RunLog
 
 _N_ITEMS = 12
 
@@ -196,6 +198,83 @@ def test_run_experiment_the_main_representation_beats_the_random_baseline(
         (retrieval["variant"] == "dedup") & (retrieval["metric"] == "MAP")
     ].set_index("representation")["value"]
     assert headline["toy_genre_ret"] > headline["random"]
+
+
+def test_run_experiment_with_a_representations_list_labels_rows_and_seeds(
+    toy_retrieval_config: Config,
+) -> None:
+    data = toy_retrieval_config.to_dict()
+    data["evaluation"]["retrieval"].pop("baselines")
+    data["representations"] = [
+        "toy_genre_ret",
+        {"label": "random_s1", "extractor": "random", "overrides": {"seed": 1}},
+        {"label": "random_s2", "extractor": "random", "overrides": {"seed": 2}},
+    ]
+    run = run_experiment(Config(data=data))
+
+    per_query = pd.read_csv(run.metrics_dir / "per_query.csv")
+    seed_of = per_query.groupby("representation")["seed"].unique().apply(list).to_dict()
+    assert seed_of == {"toy_genre_ret": [0], "random_s1": [1], "random_s2": [2]}
+
+
+def test_run_experiment_rejects_representations_together_with_baselines(
+    toy_retrieval_config: Config,
+) -> None:
+    data = toy_retrieval_config.to_dict()
+    data["representations"] = ["toy_genre_ret", "random"]  # baselines: [random] is still set
+    with pytest.raises(ConfigError, match="both set"):
+        run_experiment(Config(data=data))
+
+
+def test_run_experiment_requires_the_main_representation_in_the_list(
+    toy_retrieval_config: Config,
+) -> None:
+    data = toy_retrieval_config.to_dict()
+    data["evaluation"]["retrieval"].pop("baselines")
+    data["representations"] = ["random"]
+    with pytest.raises(ConfigError, match="main representation 'toy_genre_ret'"):
+        run_experiment(Config(data=data))
+
+
+@pytest.fixture
+def probe_evaluator(monkeypatch: pytest.MonkeyPatch) -> list[str]:
+    """Register an evaluator that appends its name to the returned list when it runs."""
+    calls: list[str] = []
+
+    class _Probe(Evaluator):
+        def evaluate(self, index: pd.DataFrame, run: RunLog) -> None:
+            calls.append("probe")
+
+    monkeypatch.setitem(EVALUATORS._entries, "probe", _Probe)
+    return calls
+
+
+def test_an_unmentioned_evaluator_is_off_by_default(
+    toy_retrieval_config: Config, probe_evaluator: list[str]
+) -> None:
+    run = run_experiment(toy_retrieval_config)
+
+    assert probe_evaluator == []
+    # retrieval is never declared as default-on by the configuration, only by its class.
+    assert (run.metrics_dir / "per_query.csv").is_file()
+
+
+def test_an_evaluator_runs_when_the_configuration_enables_it(
+    toy_retrieval_config: Config, probe_evaluator: list[str]
+) -> None:
+    data = toy_retrieval_config.to_dict()
+    data["evaluation"]["probe"] = {"enabled": True}
+    run_experiment(Config(data=data))
+
+    assert probe_evaluator == ["probe"]
+
+
+def test_retrieval_runs_without_declaring_it(toy_retrieval_config: Config) -> None:
+    data = toy_retrieval_config.to_dict()
+    data["evaluation"]["retrieval"].pop("enabled")
+    run = run_experiment(Config(data=data))
+
+    assert (run.metrics_dir / "per_query.csv").is_file()
 
 
 def test_run_experiment_records_a_failed_stage(toy_retrieval_config: Config) -> None:

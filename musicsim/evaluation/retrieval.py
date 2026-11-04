@@ -62,7 +62,9 @@ import numpy as np
 import pandas as pd
 
 from musicsim.evaluation.base import Evaluator
+from musicsim.galleries import GALLERIES, gallery_mask
 from musicsim.registry import register_evaluator
+from musicsim.representations import load_aligned_representations, stage_representations
 from musicsim.runlog import RunLog
 
 __all__ = [
@@ -78,29 +80,9 @@ __all__ = [
 #: secondary, kept for continuity with the archived pipeline's P@k figures.
 DEFAULT_KS: tuple[int, ...] = (1, 5, 10, 20)
 
-#: Valid values of ``retrieval.gallery`` (see the module docstring).
-GALLERIES: tuple[str, ...] = ("fma_test", "fma_all")
-
 #: Query rows processed per block: memory is O(block_rows * gallery), not
 #: O(gallery**2).
 _DEFAULT_BLOCK_ROWS = 512
-
-
-def gallery_mask(index_common: pd.DataFrame, gallery: str) -> np.ndarray:
-    """Boolean mask, row-aligned with ``index_common``, selecting ``gallery``.
-
-    ``fma_test`` keeps only the test split; ``fma_all`` keeps everything. Both
-    queries and candidates are drawn exclusively from the selected rows —
-    :meth:`RetrievalEvaluator.evaluate` applies this mask to every
-    representation's embeddings before ranking, computing relevance, detecting
-    near-duplicates or filtering by artist, so nothing outside the gallery can
-    be a neighbour, relevant, or the reason a query gets excluded.
-    """
-    if gallery == "fma_all":
-        return np.ones(len(index_common), dtype=bool)
-    if gallery == "fma_test":
-        return index_common["split"].to_numpy() == "test"
-    raise ValueError(f"retrieval.gallery must be one of {GALLERIES}, got {gallery!r}")
 
 
 def query_rows(ids: np.ndarray, index_common: pd.DataFrame, queries: str) -> np.ndarray:
@@ -192,19 +174,18 @@ def _append(
     out["value"].extend(values.tolist())
 
 
-def _align(X: np.ndarray, ids: np.ndarray, common_ids: np.ndarray) -> np.ndarray:
-    """Rows of ``X`` reordered to ``common_ids``, dropping any id not in it."""
-    position = pd.Series(np.arange(len(ids)), index=ids)
-    return X[position.loc[common_ids].to_numpy()]
-
-
 @register_evaluator("retrieval")
 class RetrievalEvaluator(Evaluator):
     """Retrieval evaluation for the configured extractor plus its baselines.
 
     Reads ``evaluation.retrieval`` (``enabled``, ``galleries``, ``queries``,
     ``baselines``) and the shared defaults under ``retrieval`` (``gallery``,
-    ``ks``, ``variants``, ``relevance``). Every representation (the main one
+    ``ks``, ``variants``, ``relevance``). As an alternative to ``baselines``,
+    the top-level ``representations`` list (see :mod:`musicsim.representations`)
+    names every representation to evaluate, the main one included.
+    Near-duplicates are detected on the main representation either way, and
+    the ``seed`` column of ``per_query.csv`` is each representation's own seed
+    (the bootstrap keeps the experiment's). Every representation (the main one
     and every baseline) is extracted, embedded and ranked through the exact
     same code path, so a negative control like ``random`` is "just another
     representation" rather than a special case. Every ``(gallery,
@@ -212,14 +193,14 @@ class RetrievalEvaluator(Evaluator):
     ``gallery``/``queries`` columns, never mixed into the same row.
     """
 
+    default_enabled = True
+
     def evaluate(self, index: pd.DataFrame, run: RunLog) -> None:
         # Deferred imports: musicsim.experiments orchestrates the stages
         # (including this evaluator, via the registry), so importing it at
         # module load time would be circular.
         from musicsim import seeding
-        from musicsim.embeddings import load_embeddings
         from musicsim.evaluation.bootstrap import bootstrap_ci
-        from musicsim.experiments import embed_stage, extract_stage, representation_config
         from musicsim.graphs.duplicates import duplicate_groups, near_duplicate_pairs
         from musicsim.registry import RELEVANCES
         from musicsim.relevance.base import label_codes
@@ -229,25 +210,13 @@ class RetrievalEvaluator(Evaluator):
             return
 
         main_name = self.config.require("extractor.name")
-        baselines = [name for name in stage_cfg.get("baselines", []) if name != main_name]
-        names = [main_name, *baselines]
+        specs = stage_representations(self.config, stage_cfg, main_name, "retrieval")
+        names = [spec.label for spec in specs]
 
-        embeddings: dict[str, tuple[np.ndarray, np.ndarray]] = {}
-        for name in names:
-            rep_config = representation_config(self.config, name)
-            extract_stage(rep_config)
-            embed_stage(rep_config)
-            embeddings[name] = load_embeddings(rep_config)
-
-        common_ids = embeddings[main_name][1]
-        for name in names[1:]:
-            common_ids = np.intersect1d(common_ids, embeddings[name][1])
-        common_ids = np.sort(common_ids)
-        if len(common_ids) == 0:
-            raise ValueError("no item id is common to every representation being evaluated")
-
-        index_common = index.set_index("item_id").loc[common_ids]
-        aligned = {name: _align(X, ids, common_ids) for name, (X, ids) in embeddings.items()}
+        loaded = load_aligned_representations(self.config, index, specs)
+        common_ids = loaded.ids
+        index_common = loaded.index
+        aligned = loaded.X
 
         threshold = float(self.config.get("graph.near_duplicate_threshold", 0.9999))
 
@@ -264,7 +233,6 @@ class RetrievalEvaluator(Evaluator):
         if isinstance(queries_modes, str):
             queries_modes = [queries_modes]
 
-        seed = int(self.config.require("seed"))
         frames = []
         n_dup_pairs = 0
         for gallery_name in galleries:
@@ -310,7 +278,7 @@ class RetrievalEvaluator(Evaluator):
                         frame["gallery"] = gallery_name
                         frame["variant"] = variant
                         frame["queries"] = queries_mode
-                        frame["seed"] = seed
+                        frame["seed"] = loaded.seeds[name]
                         frames.append(frame)
         per_query = pd.concat(frames, ignore_index=True)
         per_query.to_csv(run.metrics_dir / "per_query.csv", index=False)

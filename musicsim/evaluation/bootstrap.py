@@ -18,6 +18,8 @@ from collections.abc import Sequence
 import numpy as np
 import pandas as pd
 
+from musicsim.seeding import generator
+
 __all__ = [
     "BootstrapResult",
     "HolmResult",
@@ -26,8 +28,10 @@ __all__ = [
     "bootstrap_means",
     "bootstrap_pvalue",
     "holm_correction",
+    "paired_artist_subsample",
     "paired_bootstrap_ci",
     "paired_bootstrap_test",
+    "percentile_interval",
     "seed_variability_table",
 ]
 
@@ -210,6 +214,65 @@ def paired_bootstrap_test(
         ci_high=float(high),
         p_value=bootstrap_pvalue(resampled),
     )
+
+
+def paired_artist_subsample(
+    artist_ids: np.ndarray, *, n_replicates: int = 200, fraction: float = 0.8, seed: int = 0
+) -> np.ndarray:
+    """Boolean ``(n_replicates, N)``: row ``r`` selects the items of replicate ``r``'s artists.
+
+    Each replicate draws ``round(fraction * n_artists)`` artists *without*
+    replacement and keeps all of their items, so no artist is ever split
+    between the selected and the unselected side.
+
+    This is a subsample, not a bootstrap: nothing is drawn with replacement, so
+    the replicates are not an estimate of the sampling distribution of a
+    statistic. The percentile interval of a metric over the replicates (see
+    :func:`percentile_interval`) describes how much that metric moves when a
+    fifth of the artists is left out, i.e. its sensitivity to the artist mix.
+    It is not a confidence interval for the population value, and no p-value
+    should be derived from it.
+
+    The masks depend only on ``(artist_ids, n_replicates, fraction, seed)``,
+    never on the representation being scored: calling this once and applying
+    the same masks to every representation's graph is what makes their
+    per-replicate metrics comparable.
+    """
+    artists = np.asarray(artist_ids)
+    if artists.ndim != 1 or len(artists) == 0:
+        raise ValueError(f"artist_ids must be a non-empty 1-D array, got shape {artists.shape}")
+    if not 0.0 < fraction <= 1.0:
+        raise ValueError(f"fraction must be in (0, 1], got {fraction}")
+    if n_replicates < 1:
+        raise ValueError(f"n_replicates must be >= 1, got {n_replicates}")
+
+    unique_artists, item_artist = np.unique(artists, return_inverse=True)
+    item_artist = item_artist.ravel()
+    n_artists = len(unique_artists)
+    n_drawn = round(fraction * n_artists)
+    if n_drawn < 1:
+        raise ValueError(
+            f"fraction={fraction} selects no artist out of {n_artists}; "
+            "need round(fraction * n_artists) >= 1"
+        )
+
+    rng = generator(seed, "paired_artist_subsample")
+    drawn = np.zeros((n_replicates, n_artists), dtype=bool)
+    for r in range(n_replicates):
+        drawn[r, rng.choice(n_artists, size=n_drawn, replace=False)] = True
+    return drawn[:, item_artist]
+
+
+def percentile_interval(values: np.ndarray, *, confidence: float = 0.95) -> tuple[float, float]:
+    """Central ``confidence`` percentile interval of ``values`` (e.g. a metric per replicate)."""
+    v = np.asarray(values, dtype=np.float64)
+    if v.size == 0:
+        raise ValueError("values is empty")
+    if not 0.0 < confidence < 1.0:
+        raise ValueError(f"confidence must be in (0, 1), got {confidence}")
+    alpha = (1 - confidence) / 2
+    low, high = np.quantile(v, [alpha, 1 - alpha])
+    return float(low), float(high)
 
 
 @dataclasses.dataclass(frozen=True, slots=True)

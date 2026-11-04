@@ -14,6 +14,7 @@ import pytest
 
 from musicsim import paths
 from musicsim.cli import main
+from musicsim.embeddings import embeddings_cache_dir, features_cache_dir
 from musicsim.extractors.base import Extractor
 from musicsim.registry import register_extractor
 
@@ -89,7 +90,7 @@ def test_embed_writes_l2_normalized_embeddings(toy_config: Path) -> None:
     from musicsim.config import load_config
 
     config = load_config(toy_config)
-    embed_dir = paths.cache_dir("toy", "embeddings-cli_toy", config.hash())
+    embed_dir = embeddings_cache_dir(config)
     Z = np.load(embed_dir / "embeddings.npy")
     ids = np.load(embed_dir / "ids.npy")
 
@@ -136,7 +137,7 @@ def test_extract_records_failures_without_aborting(
     from musicsim.config import load_config
 
     config = load_config(config_path)
-    cache_dir = paths.cache_dir("toy", "features-flaky_toy", config.hash())
+    cache_dir = features_cache_dir(config)
     import json
 
     failures = json.loads((cache_dir / "failures.json").read_text(encoding="utf-8"))
