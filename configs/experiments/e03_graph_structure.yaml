@@ -52,7 +52,14 @@ evaluation:
     # Near-duplicates are collapsed on this representation, once per gallery, so
     # every graph has the same nodes.
     reference: mfcc
+    # Louvain communities are compared with the genre labels over several seeds.
+    # Replicates use fewer seeds (cost); the point estimate keeps n_seeds.
+    louvain: {n_seeds: 10, n_seeds_replicate: 3, resolution: 1.0}
+    # Paired subsamples of 80 % of the artists, the same for every representation;
+    # the graph is rebuilt in each replicate. Intervals describe sensitivity to
+    # the artist mix (not a bootstrap). Only fma_test is subsampled.
+    subsample: {n_replicates: 200, fraction: 0.8, galleries: [fma_test]}
 
 outputs:
-  metrics: [structure.csv, hubness.csv]
+  metrics: [structure.csv, structure_replicates.csv, structure_deltas.csv, graph_pairs.csv, hubness.csv]
   figures: []
