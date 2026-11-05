@@ -3,7 +3,8 @@
 No network: the download tests serve synthetic bytes through a patched
 ``urlopen`` and build a real zip of empty stand-in mp3 files, split into three
 parts as MTT ships it. The index tests write tab-separated mini-CSVs with the
-real column names. Only the ``slow`` test reads the real corpus.
+real column names; the constraint derivation itself is tested in
+``test_mtt_triplets.py``. Only the ``slow`` test reads the real corpus.
 """
 
 from __future__ import annotations
@@ -39,8 +40,21 @@ _CLIP_ROWS = [
     (4, "Mid", None),
 ]
 
-# One odd-one-out row: clips 2, 5 and 7 have votes; clip 3 has none.
+# One odd-one-out row over clips 2, 5 and 7: 3 votes for 2 as the outlier, 1 for
+# 5. Edges: (5,7,2) 3, (7,5,2) 3, (2,7,5) 1, (7,2,5) 1; (7,2,5) cancels against
+# (7,5,2), leaving the three constraints below. Clip 3 is in no comparison.
 _COMPARISON_ROWS = [(2, 5, 7, 3, 1, 0)]
+_CONSTRAINTS = [(5, 7, 2, 3, 0), (7, 5, 2, 2, 0), (2, 7, 5, 1, 0)]
+_COUNTS = {
+    "rows": 1,
+    "votes": 4,
+    "edges": 8,
+    "unique_edges": 4,
+    "constraints": 3,
+    "weight": 6,
+    "triplets": 1,
+    "clips": 3,
+}
 
 
 def _write_clip_info(path: Path, rows: list[tuple]) -> None:
@@ -62,7 +76,7 @@ def _write_comparisons(path: Path, rows: list[tuple]) -> None:
     pd.DataFrame(rows, columns=columns).to_csv(path, sep="\t", index=False)
 
 
-def _config(*, expected_items: int, expected_triplet_clips: int) -> Config:
+def _config(*, expected_items: int, expected_constraints: dict[str, int] = _COUNTS) -> Config:
     return Config(
         data={
             "dataset": {
@@ -71,7 +85,7 @@ def _config(*, expected_items: int, expected_triplet_clips: int) -> Config:
                 "metadata": {"clip_info": CLIP_INFO_RELATIVE, "comparisons": COMPARISONS_RELATIVE},
                 "audio_dir": AUDIO_RELATIVE,
                 "expected_items": expected_items,
-                "expected_triplet_clips": expected_triplet_clips,
+                "expected_constraints": expected_constraints,
             }
         }
     )
@@ -81,12 +95,13 @@ def _make_dataset(
     rows: list[tuple] = _CLIP_ROWS,
     *,
     expected_items: int = 4,
-    expected_triplet_clips: int = 3,
+    expected_constraints: dict[str, int] = _COUNTS,
+    comparisons: list[tuple] = _COMPARISON_ROWS,
     skip_audio: tuple[str, ...] = (),
 ) -> MttDataset:
     dataset_dir = paths.dataset_dir("mtt")
     _write_clip_info(dataset_dir / CLIP_INFO_RELATIVE, rows)
-    _write_comparisons(dataset_dir / COMPARISONS_RELATIVE, _COMPARISON_ROWS)
+    _write_comparisons(dataset_dir / COMPARISONS_RELATIVE, comparisons)
     for _, _, mp3_path in rows:
         if mp3_path is None or mp3_path in skip_audio:
             continue
@@ -94,7 +109,7 @@ def _make_dataset(
         file_path.parent.mkdir(parents=True, exist_ok=True)
         file_path.write_bytes(b"")
     return MttDataset(
-        _config(expected_items=expected_items, expected_triplet_clips=expected_triplet_clips)
+        _config(expected_items=expected_items, expected_constraints=expected_constraints)
     )
 
 
@@ -135,6 +150,28 @@ def test_write_index_writes_the_eight_columns(isolated_roots: dict[str, Path]) -
     assert on_disk["in_triplets"].tolist() == [True, False, True, True]
 
 
+def test_write_index_writes_the_constraints_next_to_the_index(
+    isolated_roots: dict[str, Path],
+) -> None:
+    dataset = _make_dataset()
+    dataset.write_index()
+    on_disk = pd.read_csv(dataset.triplet_constraints_path)
+    assert dataset.triplet_constraints_path == paths.dataset_dir("mtt") / "triplet_constraints.csv"
+    assert list(on_disk.columns) == ["anchor", "pos", "neg", "margin", "triplet_id"]
+    assert sorted(on_disk.itertuples(index=False, name=None)) == sorted(_CONSTRAINTS)
+
+
+def test_a_compared_clip_that_loses_its_constraints_is_not_flagged(
+    isolated_roots: dict[str, Path],
+) -> None:
+    # One vote for each clip of (3, 5, 7) as the outlier: every edge meets its
+    # opposite with the same weight, so clip 3 is compared but constrained nowhere.
+    comparisons = [*_COMPARISON_ROWS, (3, 5, 7, 1, 1, 1)]
+    counts = {**_COUNTS, "rows": 2, "votes": 7, "edges": 14, "unique_edges": 10}
+    frame = _make_dataset(comparisons=comparisons, expected_constraints=counts).build_index()
+    assert frame["in_triplets"].tolist() == [True, False, True, True]
+
+
 def test_wrong_clip_count_is_refused(isolated_roots: dict[str, Path]) -> None:
     with pytest.raises(DatasetError, match="expected 5 clips"):
         _make_dataset(expected_items=5).build_index()
@@ -143,7 +180,7 @@ def test_wrong_clip_count_is_refused(isolated_roots: dict[str, Path]) -> None:
 def test_duplicate_clip_ids_are_refused(isolated_roots: dict[str, Path]) -> None:
     rows = [*_CLIP_ROWS, (7, "Zeta", "f/zeta-07-copy.mp3")]
     with pytest.raises(DatasetError, match=r"duplicate item_id values in the index: \[7\]"):
-        _make_dataset(rows, expected_items=5, expected_triplet_clips=4).build_index()
+        _make_dataset(rows, expected_items=5).build_index()
 
 
 def test_an_unknown_directory_is_refused(isolated_roots: dict[str, Path]) -> None:
@@ -155,12 +192,20 @@ def test_an_unknown_directory_is_refused(isolated_roots: dict[str, Path]) -> Non
 def test_a_missing_split_is_refused(isolated_roots: dict[str, Path]) -> None:
     rows = [row for row in _CLIP_ROWS if row[0] != 5]  # the only validation clip
     with pytest.raises(DatasetError, match="expected splits"):
-        _make_dataset(rows, expected_items=3, expected_triplet_clips=2).build_index()
+        _make_dataset(rows, expected_items=3).build_index()
 
 
-def test_wrong_compared_clip_count_is_refused(isolated_roots: dict[str, Path]) -> None:
-    with pytest.raises(DatasetError, match=r"expected 4 indexed clips .* got 3"):
-        _make_dataset(expected_triplet_clips=4).build_index()
+def test_wrong_constraint_figures_are_refused(isolated_roots: dict[str, Path]) -> None:
+    with pytest.raises(DatasetError, match="votes: expected 5, got 4"):
+        _make_dataset(expected_constraints={**_COUNTS, "votes": 5}).build_index()
+
+
+def test_a_constrained_clip_without_audio_is_refused(isolated_roots: dict[str, Path]) -> None:
+    # Clip 4 has no mp3_path, so it is not indexed, yet it carries constraints.
+    with pytest.raises(
+        DatasetError, match="expected 3 indexed clips with a triplet constraint, got 2"
+    ):
+        _make_dataset(comparisons=[(2, 4, 7, 3, 1, 0)]).build_index()
 
 
 def test_a_missing_audio_file_is_refused(isolated_roots: dict[str, Path]) -> None:
@@ -171,7 +216,7 @@ def test_a_missing_audio_file_is_refused(isolated_roots: dict[str, Path]) -> Non
 def test_build_index_without_a_download_names_the_missing_file(
     isolated_roots: dict[str, Path],
 ) -> None:
-    dataset = MttDataset(_config(expected_items=4, expected_triplet_clips=3))
+    dataset = MttDataset(_config(expected_items=4))
     with pytest.raises(FileNotFoundError, match="musicsim download"):
         dataset.build_index()
 
@@ -233,7 +278,7 @@ def served(monkeypatch: pytest.MonkeyPatch) -> Iterator[dict[str, object]]:
 
 
 def _download_dataset(expected_items: int = len(_MP3_NAMES)) -> MttDataset:
-    return MttDataset(_config(expected_items=expected_items, expected_triplet_clips=0))
+    return MttDataset(_config(expected_items=expected_items))
 
 
 def test_concatenate_joins_the_parts_byte_for_byte(tmp_path: Path) -> None:
@@ -309,7 +354,7 @@ def test_a_wrong_mp3_count_is_refused(
 
 # --- the real corpus -------------------------------------------------------------
 @pytest.mark.slow
-def test_the_real_index_has_every_clip_and_every_compared_clip() -> None:
+def test_the_real_index_has_every_clip_and_every_constrained_clip() -> None:
     config = load_config(paths.REPO_ROOT / "configs" / "datasets" / "mtt.yaml")
     dataset = MttDataset(config)
     if not dataset.clip_info_csv.is_file():
@@ -318,7 +363,7 @@ def test_the_real_index_has_every_clip_and_every_compared_clip() -> None:
     frame = dataset.build_index()
 
     assert len(frame) == 25863
-    assert int(frame["in_triplets"].sum()) == 1019
+    assert int(frame["in_triplets"].sum()) == 993
     assert frame["artist_id"].nunique() == 230
     assert frame["split"].value_counts().to_dict() == {
         "training": 18709,

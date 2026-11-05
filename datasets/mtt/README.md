@@ -97,7 +97,8 @@ python -m musicsim index --dataset mtt
 ```
 
 The index builder asserts the whole derivation chain, and fails loudly if any
-count is off:
+count is off. The expected figures are fixed in `configs/datasets/mtt.yaml`
+(`dataset.expected_constraints`):
 
 | Quantity | Expected |
 |---|---|
@@ -146,15 +147,16 @@ datasets/mtt/index.csv   item_id, path, split, artist_id, group_id, genre_top, g
   | validation | `c` | 1 825 |
   | test | `d`-`f` | 5 329 |
 
-- **`in_triplets`** is currently true for the 1019 clips that appear in
-  `comparisons_final.csv`. Of these, 993 keep at least one consistent
-  constraint after the cancellation of section 4; the other 26 lose all of
-  theirs.
+- **`in_triplets`** is true for the 993 clips that keep at least one
+  consistent constraint after the cancellation of section 4. Another 26 clips
+  appear in `comparisons_final.csv` (1019 in total) but lose all of theirs, so
+  no evaluation can use them and they are not flagged. None of the three empty
+  mp3 files above is among the 993.
 
 The three uses of this index, each covering a different part of the corpus:
 
-- **Human-judgement evaluation** (`mtt_triplets`, 993 clips, `in_triplets`):
-  agreement with the constraints derived below (SQ4, stage S2, experiment e04)
+- **Human-judgement evaluation** (`mtt_triplets`, the 993 clips with
+  `in_triplets`): agreement with the 860 constraints derived below (SQ4, stage S2, experiment e04)
   and the model-versus-human ambiguity analysis of the fuzzy block (F4, stage
   S2, experiment e11).
 - **Multi-label genre membership** (all 25 863 clips, the tag columns of
@@ -177,9 +179,18 @@ Votes pointing in opposite directions cancel: for every ordered pair the opposin
 weight is subtracted, and only the pairs with a positive remainder survive. That
 removes the two-cycles and leaves the 860 consistent constraints.
 
-`musicsim/datasets/mtt.py` implements this and writes
-`triplet_constraints.csv` with `anchor, pos, neg, margin, triplet_id`. The margin
-is the vote surplus, which the weighted variants of the metric use.
+`musicsim/datasets/mtt_triplets.py` implements this, and `python -m musicsim
+index --dataset mtt` writes the result next to the index:
+
+```
+datasets/mtt/triplet_constraints.csv   anchor, pos, neg, margin, triplet_id
+```
+
+Each row states `d(anchor, pos) < d(anchor, neg)`. The margin is the vote
+surplus (at least 1; 642 constraints have a margin of 2 or more), which the
+weighted variants of the metric use. `triplet_id` numbers the 337 distinct sets
+of three clips from 0, in order of their sorted clip ids; it is the cluster of
+the bootstrap of the agreement metric.
 
 ## 5. Limitations this corpus imposes
 

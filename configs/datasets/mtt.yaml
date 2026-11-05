@@ -20,12 +20,23 @@ dataset:
   audio_dir: raw/audio        # 0/ ... f/, extracted from the three-part mp3.zip
 
   expected_items: 25863
-  # Clips that appear in comparisons_final.csv (the odd-one-out votes). The 993
-  # of the published figures are the subset left with a consistent constraint.
-  expected_triplet_clips: 1019
+  # The derivation of the similarity constraints from the odd-one-out votes
+  # (Wolff et al. 2012; musicsim/datasets/mtt_triplets.py). Every figure is
+  # asserted: a different one means comparisons_final.csv changed. The index
+  # flags the 993 clips with a constraint as in_triplets; 26 more clips appear
+  # in the CSV but lose all their constraints when opposing votes cancel.
+  expected_constraints:
+    rows: 533            # rows of comparisons_final.csv
+    votes: 7650
+    edges: 15300         # two per vote
+    unique_edges: 1598
+    constraints: 860     # left after subtracting opposing votes
+    weight: 6898         # sum of the margins
+    triplets: 337        # distinct sets of three clips
+    clips: 993
 
   # Standard index columns: item_id, path, split, artist_id, group_id, plus
-  # in_triplets. MTT has no genre labels: genre_top and genres_all are empty.
+  # in_triplets. The constraints go to triplet_constraints.csv, next to index.csv. MTT has no genre labels: genre_top and genres_all are empty.
   # The split is fixed in the code by archive directory: 0-b training,
   # c validation, d-f test (12 : 1 : 3). The directories do not keep artists
   # apart; documented, not corrected.

@@ -30,9 +30,13 @@ artists apart, and this is documented, not corrected.
 alphabetical order, so the same CSV always yields the same ids (our own
 choice; any deterministic order would do).
 
-**in_triplets.** True for every clip that appears in ``comparisons_final.csv``
-(1019 clips). The derivation of the consistent constraints, which keeps 993 of
-them, is not done here.
+**in_triplets.** True for every clip that keeps at least one consistent
+similarity constraint (993 clips), not for every clip that appears in
+``comparisons_final.csv`` (1019): the other 26 lose all their constraints when
+opposing votes cancel, so no evaluation can use them. The derivation lives in
+:mod:`musicsim.datasets.mtt_triplets`; :meth:`MttDataset.write_index` writes its
+result next to the index, as ``triplet_constraints.csv``, so that the index and
+the constraints always come from the same build.
 
 MTT has no genre labels: ``genre_top`` and ``genres_all`` are left empty.
 """
@@ -49,6 +53,11 @@ import pandas as pd
 from musicsim import paths
 from musicsim.datasets.base import Dataset, DatasetError
 from musicsim.datasets.download import DownloadSpec, download_file, ensure_free_space
+from musicsim.datasets.mtt_triplets import (
+    check_constraint_counts,
+    constraint_counts,
+    derive_constraints,
+)
 from musicsim.registry import register_dataset
 
 __all__ = ["MttDataset"]
@@ -117,8 +126,8 @@ _SPLIT_BY_DIRECTORY: dict[str, str] = {
     **dict.fromkeys("def", "test"),
 }
 
-#: The three columns of ``comparisons_final.csv`` that hold clip ids.
-_COMPARISON_CLIP_COLUMNS: tuple[str, ...] = ("clip1_id", "clip2_id", "clip3_id")
+#: File name of the derived constraints, next to ``index.csv``.
+_CONSTRAINTS_NAME = "triplet_constraints.csv"
 
 #: MTT's CSV files are tab-separated.
 _CSV_SEPARATOR = "\t"
@@ -146,6 +155,11 @@ class MttDataset(Dataset):
     @property
     def audio_dir(self) -> Path:
         return paths.dataset_dir(self.directory_name) / self.config.require("dataset.audio_dir")
+
+    @property
+    def triplet_constraints_path(self) -> Path:
+        """Where :meth:`write_index` writes the constraints of :meth:`build_constraints`."""
+        return paths.dataset_dir(self.directory_name) / _CONSTRAINTS_NAME
 
     # -- download --------------------------------------------------------------
     def download(self, *, force: bool = False) -> None:
@@ -184,9 +198,28 @@ class MttDataset(Dataset):
                 f"found {found}; run `musicsim download --dataset {self.name}` with force"
             )
 
+    # -- triplet constraints -----------------------------------------------
+    def build_constraints(self) -> pd.DataFrame:
+        """Derive the consistent constraints and check every figure of the derivation.
+
+        The expected figures come from ``dataset.expected_constraints``; any
+        difference raises :class:`DatasetError`.
+        """
+        if not self.comparisons_csv.is_file():
+            raise FileNotFoundError(
+                f"{self.comparisons_csv} not found; "
+                f"run `musicsim download --dataset {self.name}` first"
+            )
+        comparisons = pd.read_csv(self.comparisons_csv, sep=_CSV_SEPARATOR)
+        constraints = derive_constraints(comparisons)
+        counts = constraint_counts(comparisons, constraints)
+        check_constraint_counts(counts, self.config.require("dataset.expected_constraints"))
+        logger.info("%s: triplet constraints %s", self.name, counts)
+        return constraints
+
     # -- index -------------------------------------------------------------
     def build_index(self) -> pd.DataFrame:
-        """Index every clip with audio, flag the clips of the odd-one-out game, validate."""
+        """Index every clip with audio, flag the clips with a constraint, validate."""
         for csv in (self.clip_info_csv, self.comparisons_csv):
             if not csv.is_file():
                 raise FileNotFoundError(
@@ -204,8 +237,8 @@ class MttDataset(Dataset):
         )
         clips = clips[~without_audio]
 
-        comparisons = pd.read_csv(self.comparisons_csv, sep=_CSV_SEPARATOR)
-        compared = pd.unique(comparisons[list(_COMPARISON_CLIP_COLUMNS)].to_numpy().ravel())
+        constraints = self.build_constraints()
+        constrained = pd.unique(constraints[["anchor", "pos", "neg"]].to_numpy().ravel())
 
         artists = sorted(clips["artist"].unique())
         item_ids = clips["clip_id"].astype(int).to_numpy()
@@ -221,13 +254,24 @@ class MttDataset(Dataset):
                 "group_id": item_ids,
                 "genre_top": pd.NA,
                 "genres_all": pd.NA,
-                "in_triplets": pd.Series(item_ids).isin(compared).to_numpy(),
+                "in_triplets": pd.Series(item_ids).isin(constrained).to_numpy(),
             }
         )
         frame = frame.sort_values("item_id").reset_index(drop=True)
 
         self._validate(frame, mp3_paths)
         return frame
+
+    def write_index(self) -> Path:
+        """Write ``index.csv`` and, next to it, ``triplet_constraints.csv``; return the index path.
+
+        The constraints are derived again rather than passed from
+        :meth:`build_index`, which the base class calls: the derivation is cheap
+        and both calls read the same CSV.
+        """
+        index_path = super().write_index()
+        self.build_constraints().to_csv(self.triplet_constraints_path, index=False)
+        return index_path
 
     def _validate(self, frame: pd.DataFrame, mp3_paths: pd.Series) -> None:
         """Raise :class:`DatasetError` with an actionable message on any mismatch."""
@@ -258,12 +302,15 @@ class MttDataset(Dataset):
         # No split size is published for MTT, so the sizes are reported, not asserted.
         logger.info("%s: clips per split %s", self.name, split_sizes)
 
-        expected_compared = self.config.require("dataset.expected_triplet_clips")
-        n_compared = int(frame["in_triplets"].sum())
-        if n_compared != expected_compared:
+        # Equal to the "clips" figure of the derivation unless a constrained
+        # clip is missing from the index.
+        expected_constrained = self.config.require("dataset.expected_constraints.clips")
+        n_constrained = int(frame["in_triplets"].sum())
+        if n_constrained != expected_constrained:
             raise DatasetError(
-                f"expected {expected_compared} indexed clips in {self.comparisons_csv.name}, "
-                f"got {n_compared}"
+                f"expected {expected_constrained} indexed clips with a triplet constraint, "
+                f"got {n_constrained}; a constrained clip has no mp3_path in "
+                f"{self.clip_info_csv.name}"
             )
 
         missing_files = [path for path in frame["path"] if not Path(path).is_file()]
