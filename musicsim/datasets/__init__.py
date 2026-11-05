@@ -7,6 +7,6 @@ and ``index`` subcommands of :mod:`musicsim.cli` call it before looking a datase
 
 from __future__ import annotations
 
-from musicsim.datasets import fma  # noqa: F401 - imported for its registration side effect
+from musicsim.datasets import fma, mtt  # noqa: F401 - imported for their registration side effect
 
 __all__: list[str] = []

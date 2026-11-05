@@ -24,7 +24,25 @@ votes of the TagATune game are **direct human judgements of musical similarity**
 python -m musicsim download --dataset mtt
 ```
 
-By hand:
+This downloads the six files, verifies each one, joins the three audio parts
+into `mp3.zip`, extracts it to `raw/audio/` and checks that it holds 25 863 mp3
+files. Running it again does nothing once everything is verified.
+
+**MTT publishes no checksums.** The SHA-1 values below, fixed in
+`musicsim/datasets/mtt.py`, were computed locally from the first download on
+2026-11-04. They catch a corrupt or changed file; they are not official.
+
+| File | Bytes | SHA-1 (local) |
+|---|---:|---|
+| `clip_info_final.csv` | 8 608 397 | `f2c884791b61413054bec12c5fd970eaec528da3` |
+| `annotations_final.csv` | 21 517 373 | `1c61c804ee2ee037c8f06c2dadc3a1b7b5aa31be` |
+| `comparisons_final.csv` | 131 947 | `3755c22179fa59474986b38a709433af657fd266` |
+| `mp3.zip.001` | 1 100 000 000 | `42d6167bd4934ee917c3aef3d238e50b17eaee15` |
+| `mp3.zip.002` | 1 100 000 000 | `f63d51856e7915457bd6d193564c65b1296f4b2c` |
+| `mp3.zip.003` | 772 769 864 | `0e0d23498d33ae616a67901749ac4dc3fc051d2d` |
+
+By hand, as an alternative (the index builder then expects the audio under
+`raw/audio/`):
 
 ```powershell
 New-Item -ItemType Directory -Force datasets\mtt\raw
@@ -64,6 +82,8 @@ datasets/mtt/
     ├── clip_info_final.csv     clip id, song, artist, album, url
     ├── annotations_final.csv   188 binary tag columns per clip
     ├── comparisons_final.csv   the odd-one-out votes: 533 rows, 7650 votes
+    ├── mp3.zip.001 ... .003    the three parts of the audio archive
+    ├── mp3.zip                 the parts joined
     └── audio/
         ├── 0/...mp3
         └── f/...mp3            16 directories, 0 to f
@@ -96,12 +116,40 @@ report would be invalid, so the failure is deliberate rather than a warning.
 ## 3b. The full index
 
 `python -m musicsim index --dataset mtt` (stage S2) builds `index.csv` over
-**all 25 863 clips**, not only the 993 involved in a triplet constraint, with
-the standard split and a boolean `in_triplets` column:
+**all 25 863 clips**, not only the ones involved in a triplet constraint, with
+the same seven columns as every other corpus plus a boolean `in_triplets`:
 
 ```
-datasets/mtt/index.csv   item_id, path, artist_id, split, in_triplets
+datasets/mtt/index.csv   item_id, path, split, artist_id, group_id, genre_top, genres_all, in_triplets
 ```
+
+- **Clips.** `clip_info_final.csv` has 31 382 rows, but 5 519 have an empty
+  `mp3_path` and no audio; the index keeps the 25 863 that have one (the same
+  clips as `annotations_final.csv`).
+- **`artist_id`** numbers the artist names of the indexed clips in
+  alphabetical order, so it is the same on every build. The 25 863 clips with
+  audio come from 230 artists; the 270 of the published figures count every
+  row of `clip_info_final.csv`, including the ones without audio.
+- **Three empty files.** The mp3 files of clips 35644, 55753 and 57881 are in
+  the archive but hold 0 bytes. They stay in the index, since they exist on
+  disk, and feature extraction reports them as failures.
+- **`genre_top`, `genres_all`** are empty: MTT has no genre labels.
+- **`split`** follows the archive directory, the 12 : 1 : 3 split of the
+  tagging literature: `0`-`b` training, `c` validation, `d`-`f` test. MTT does
+  not keep artists apart across directories; this is documented, not
+  corrected. No split size is published, so the builder reports these rather
+  than asserting them:
+
+  | Split | Directories | Clips |
+  |---|---|---:|
+  | training | `0`-`b` | 18 709 |
+  | validation | `c` | 1 825 |
+  | test | `d`-`f` | 5 329 |
+
+- **`in_triplets`** is currently true for the 1019 clips that appear in
+  `comparisons_final.csv`. Of these, 993 keep at least one consistent
+  constraint after the cancellation of section 4; the other 26 lose all of
+  theirs.
 
 The three uses of this index, each covering a different part of the corpus:
 
