@@ -384,6 +384,25 @@ experiment `e03`.
 *Open item.* Not yet in `report/bibliography.bib`; add it when it is promoted
 to `[verified]`.
 
+### `Blondel2008` — Fast unfolding of communities in large networks `[to read]`
+URL: pending (not yet located).
+
+Vincent D. Blondel, Jean-Loup Guillaume, Renaud Lambiotte and Etienne
+Lefebvre. *Journal of Statistical Mechanics: Theory and Experiment*, 2008. Title,
+authors and venue are cited from memory and **not yet checked against the
+primary source**; volume, article number and DOI are pending. The paper itself is
+not yet read.
+
+*What it gives.* The Louvain method: greedy, multi-level optimisation of
+modularity, used here to partition the (undirected, binary) kNN graph into
+communities that are then compared with the genre labels.
+
+*Where it is used.* `musicsim/evaluation/communities.py` and the NMI and
+modularity metrics of experiment `e03`.
+
+*Open item.* Not yet in `report/bibliography.bib`; add it when it is promoted
+to `[verified]`.
+
 ---
 
 ## Tools

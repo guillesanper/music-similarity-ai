@@ -49,6 +49,17 @@ Next to ``neighbors.npz`` and ``edges.csv`` every graph directory also gets
 with ``item_id, genre_top, artist_id, split, k_occurrence`` and ``community``
 (the first Louvain seed) as node attributes.
 
+For every gallery three figures go to ``figures/`` (see :mod:`musicsim.plotting`),
+each as ``.png`` and ``.pdf``: ``k_occurrence_<gallery>`` and
+``community_sizes_<gallery>`` with one line per representation, and
+``community_genre_<gallery>_<reference>`` with the genre make-up of the reference
+representation's communities. Communities are those of the *first* Louvain seed
+(the same ones exported as the ``community`` node attribute); the other seeds are
+used by the numbers, not by the figures. Genre names are read from ``genre_top``,
+which is what the default ``label_match`` relevance codes, because a relevance
+function only returns integer codes; a different ``relevance.column`` is rejected
+rather than drawn with the wrong names.
+
 ``seed`` is the seed of each representation's own configuration, so several
 draws of the ``random`` extractor stay distinguishable.
 
@@ -110,6 +121,12 @@ from musicsim.graphs.compare import (
 )
 from musicsim.graphs.export import export_graph
 from musicsim.graphs.gallery import gallery_nodes, graph_dir
+from musicsim.plotting import (
+    plot_community_genre_matrix,
+    plot_community_sizes,
+    plot_k_occurrence,
+    save_figure,
+)
 from musicsim.registry import register_evaluator
 from musicsim.representations import load_aligned_representations, stage_representations
 from musicsim.runlog import RunLog
@@ -263,6 +280,17 @@ def _metrics_and_partitions(
     return metrics, partitions
 
 
+def _genre_names(genre_top: pd.Series, genre_codes: np.ndarray) -> list[str]:
+    """Name of every genre code ``0..max``: the ``genre_top`` of the nodes carrying it.
+
+    A code whose nodes have no genre (missing labels get a code each) is named
+    ``unknown``.
+    """
+    first = pd.Series(genre_top.to_numpy()).groupby(genre_codes).first()
+    names = first.reindex(range(int(genre_codes.max()) + 1)).fillna("unknown")
+    return [str(name) for name in names]
+
+
 def _pair_metrics(
     graph_a: Graph, graph_b: Graph, partitions_a: np.ndarray, partitions_b: np.ndarray
 ) -> dict[str, float]:
@@ -314,6 +342,12 @@ class GraphStructureEvaluator(Evaluator):
             )
 
         loaded = load_aligned_representations(self.config, index, specs)
+        column = self.config.get("relevance.column", "genre_top")
+        if column != "genre_top":
+            raise ConfigError(
+                f"relevance.column is {column!r}; the structure figures name genres from "
+                "'genre_top', so expected 'genre_top'"
+            )
         relevance = RELEVANCES.get(self.config.get("retrieval.relevance", "label_match"))(
             self.config
         )
@@ -393,6 +427,29 @@ class GraphStructureEvaluator(Evaluator):
                         }
                     )
                 )
+            first_seed = {label: parts[0] for label, parts in partitions.items()}
+            figures = run.figures_dir
+            save_figure(
+                plot_k_occurrence(
+                    {label: k_occurrence(graph) for label, graph in graphs.items()},
+                    int(graph_cfg["k"]),
+                ),
+                figures / f"k_occurrence_{gallery_name}",
+            )
+            save_figure(
+                plot_community_sizes(
+                    {label: np.bincount(parts) for label, parts in first_seed.items()}
+                ),
+                figures / f"community_sizes_{gallery_name}",
+            )
+            save_figure(
+                plot_community_genre_matrix(
+                    first_seed[reference],
+                    genre_codes,
+                    _genre_names(loaded.index.loc[nodes.ids, "genre_top"], genre_codes),
+                ),
+                figures / f"community_genre_{gallery_name}_{reference}",
+            )
             point_pairs = {
                 (a, b): _pair_metrics(graphs[a], graphs[b], partitions[a], partitions[b])
                 for a, b in label_pairs
