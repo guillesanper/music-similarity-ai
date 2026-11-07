@@ -5,6 +5,15 @@ by default) and then applied to every item, so normalisation statistics never
 see validation/test — the same rule later experiments that train models on
 ``training`` (siamese, CNN, ...) need anyway.
 
+``embedding.fit_on: all`` fits them on every item instead. That is legitimate
+only when no label takes part in anything the embeddings are judged on, as in
+the external evaluation on MagnaTagATune (its ``mtt.yaml`` sets it): the
+statistics are unsupervised, so fitting them on the evaluated clips leaks
+nothing. It is preferred there to reusing the FMA scaler because MagnaTagATune
+has nothing above 8 kHz, which would shift every vector the same way, and the
+cosine is not invariant to that shift (``docs/ground-truth-study.md`` §4.1; a
+decision of ours). It must never be used where labels are evaluated (FMA).
+
 With every row L2-normalised, ``cos(a, b) == a @ b``, so the similarity graph
 is a plain matrix product.
 
@@ -43,6 +52,9 @@ _FEATURE_SECTIONS: tuple[str, ...] = ("dataset", "audio", "spectrogram", "extrac
 
 #: Tolerance on |norm - 1| after L2-normalising and casting to float32.
 _NORM_TOL = 1e-4
+
+#: ``embedding.fit_on`` value that fits the scaler and the PCA on every item.
+_FIT_ON_ALL = "all"
 
 
 class EmbeddingError(ValueError):
@@ -96,7 +108,10 @@ def build_embeddings(
             f"{len(missing)} id(s) not present in the index, e.g. {list(missing[:5])}"
         )
 
-    fit_mask = split_by_id.loc[ids].to_numpy() == fit_split
+    if fit_split == _FIT_ON_ALL:
+        fit_mask = np.ones(len(ids), dtype=bool)
+    else:
+        fit_mask = split_by_id.loc[ids].to_numpy() == fit_split
     if not fit_mask.any():
         raise EmbeddingError(f"no item belongs to the '{fit_split}' split; nothing to fit on")
 

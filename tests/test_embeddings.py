@@ -1,4 +1,4 @@
-"""Tests for musicsim.embeddings: standardize (training only) -> PCA -> L2."""
+"""Tests for musicsim.embeddings: standardize (training, or all items) -> PCA -> L2."""
 
 from __future__ import annotations
 
@@ -62,6 +62,32 @@ def test_standardize_uses_only_the_training_split_statistics() -> None:
 
     Z, _ = build_embeddings(X, _ids(), _index(), _config())
     np.testing.assert_allclose(Z, expected.astype(np.float32), rtol=1e-4, atol=1e-4)
+
+
+def test_fit_on_all_standardizes_with_the_statistics_of_every_item() -> None:
+    X = _features()
+    scaler = StandardScaler().fit(X.astype(np.float64))
+    expected = scaler.transform(X.astype(np.float64))
+    expected /= np.linalg.norm(expected, axis=1, keepdims=True)
+
+    Z, info = build_embeddings(X, _ids(), _index(), _config(fit_on="all"))
+    assert info["n_fit"] == 6
+    np.testing.assert_allclose(Z, expected.astype(np.float32), rtol=1e-4, atol=1e-4)
+
+
+def test_fit_on_defaults_to_the_training_split() -> None:
+    config = Config(data={"seed": 42, "embedding": {"standardize": True, "l2_normalize": True}})
+    default, default_info = build_embeddings(_features(), _ids(), _index(), config)
+    training, _ = build_embeddings(_features(), _ids(), _index(), _config(fit_on="training"))
+    assert default_info["n_fit"] == 4
+    np.testing.assert_array_equal(default, training)
+
+
+def test_fit_on_all_still_rejects_ids_missing_from_the_index() -> None:
+    with pytest.raises(EmbeddingError, match="not present in the index"):
+        build_embeddings(
+            _features(), np.array([1, 2, 3, 4, 5, 999]), _index(), _config(fit_on="all")
+        )
 
 
 def test_pca_reduces_dimensionality_and_reports_explained_variance() -> None:

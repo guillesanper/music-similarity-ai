@@ -40,3 +40,10 @@ dataset:
   # The split is fixed in the code by archive directory: 0-b training,
   # c validation, d-f test (12 : 1 : 3). The directories do not keep artists
   # apart; documented, not corrected.
+
+# The scaler (and the PCA, when enabled) is fitted on every MTT clip rather than
+# on the training directories: no label takes part in the triplet evaluation,
+# so nothing leaks, and the FMA scaler would be skewed by the missing band above
+# 8 kHz (docs/ground-truth-study.md section 4.1).
+embedding:
+  fit_on: all
