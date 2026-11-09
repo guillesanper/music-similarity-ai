@@ -1,0 +1,47 @@
+# E04 - Do the representations agree with human similarity judgements?
+# Answers SQ4 (do the conclusions drawn with the genre proxy hold against human
+# perception?) on family B of the ground truths: the 860 similarity constraints
+# derived from MagnaTagATune's odd-one-out votes (Wolff et al. 2012). A
+# constraint (s, p, n) is satisfied when cos(s, p) > cos(s, n), ties count 0.5.
+# Reference: chance is 0.5 and an untrained MFCC bag of audio words satisfies
+# 63.6-64.6 % (Karamanolakis 2016). Report: section 06_results, "Proxy versus
+# perception".
+
+defaults:
+  - ../base.yaml
+  - ../datasets/mtt.yaml
+  - ../extractors/mfcc.yaml
+
+experiment: e04_human_triplets
+
+# Every MTT clip is extracted and embedded: the scaler is fitted on all of them
+# (embedding.fit_on: all in configs/datasets/mtt.yaml), not only on the 993 the
+# constraints use. No graph: the metric compares three clips at a time.
+stages: [extract, embed, evaluate]
+
+# The random extractor is the chance floor; three seeds show how much it moves.
+representations:
+  - mfcc
+  - label: random_s0
+    extractor: random
+    overrides: {seed: 0}
+  - label: random_s1
+    extractor: random
+    overrides: {seed: 1}
+  - label: random_s2
+    extractor: random
+    overrides: {seed: 2}
+
+evaluation:
+  retrieval:
+    enabled: false
+  triplets:
+    enabled: true
+    # Paired differences (first minus second), Holm-corrected over the
+    # unweighted variant of every pair listed here.
+    comparisons:
+      - [mfcc, random_s0]
+
+outputs:
+  metrics: [triplets.csv, triplets_per_constraint.csv, triplets_deltas.csv]
+  figures: []
