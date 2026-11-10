@@ -99,11 +99,100 @@ split during selection would make every published probing number optimistic.}
 \section{Graph structure, hubness and robustness}
 \label{sec:structure-protocol}
 
-\todo{Community detection with several seeds and the stability of the partition
-reported next to its quality; ARI, NMI, modularity, components, clustering
-coefficient and silhouette. The k-occurrence distribution, its skewness,
-anti-hubs, and mutual proximity. Robustness as neighbour-set Jaccard@k and
-$\Delta$P@k under noise, gain, pitch shift, time stretch and cropping.}
+The structure of the graph each representation induces is measured on the
+directed kNN graph with $k=10$, built inside the gallery (Section
+\ref{sec:graph-gallery}), with near-duplicates collapsed. Every number below
+is computed by \texttt{musicsim/evaluation/\{hubness, structure, communities\}.py}
+and \texttt{musicsim/graphs/compare.py}.
+
+\paragraph{Hubness.} The k-occurrence $N_k(i)$ is the number of nodes that list
+$i$ among their $k$ neighbours, that is, the in-degree of $i$. In high dimension
+it becomes right-skewed: a few \emph{hubs} appear in many neighbour lists and
+many \emph{antihubs} in none. The headline summary is the skewness of $N_k$, the
+population third standardised moment, defined as $0$ when $N_k$ is constant
+(a directed ring, for instance). Secondary: the fraction of antihubs
+($N_k=0$), the fraction of hubs, defined as $N_k > 2\,\overline{N_k}$, and the
+largest $N_k$. The threshold uses the mean in-degree and not $2k$ so that it
+stays meaningful when degrees vary; a threshold based on the standard deviation
+is avoided because it grows with the skew it is meant to detect, and would hide
+the hubs of the most biased representation. \todo{Cite Radovanovi\'c et al.\ (2010)
+for the definition of hubness once the paper has been read and the entry moved to
+the bibliography.}
+
+\paragraph{Communities against genre.} Louvain communities are computed on the
+undirected union graph with unit edge weights (the cosine weights of a kNN graph
+can be non-positive, and Louvain requires positive ones), resolution 1, and 10
+seeds. The seed of each run depends on the experiment seed and the run number and
+never on the label of the representation, so two identical graphs receive
+identical partitions. The headline is the normalised mutual information between
+the partition and the genre labels (arithmetic-mean normalisation), averaged over
+seeds. Reported beside it, because a partition that changes from one seed to the
+next says little about the graph: the modularity of the partition and its
+stability, the mean adjusted Rand index over all pairs of seeds. Isolated nodes
+are communities of their own. \todo{Cite Blondel et al.\ (2008) once verified.}
+
+\paragraph{Label homophily.} The fraction of directed edges whose two endpoints
+share \texttt{genre\_top}. On a graph built without removing near-duplicates this
+is exactly the mean precision at 10 of the retrieval evaluator (Section
+\ref{sec:retrieval-protocol}) under the \texttt{raw} variant. It is therefore
+reported as a structure metric and not as a second retrieval result, and the
+reader should not count it as independent evidence. Its chance level is the
+homophily of the random control, about $1/8$ with eight roughly balanced
+genres, and the gain over that control is what is interpreted.
+
+\paragraph{Other structure statistics.} Reciprocity (fraction of edges $i\to j$
+whose reverse $j\to i$ exists); mean local clustering coefficient on the union
+graph, averaged over all nodes with coefficient $0$ for degree below 2; the
+number of weakly connected components and the fraction of nodes in the largest
+one. These are secondary.
+
+\paragraph{Neighbour-vote classification.} Each node is assigned the genre that
+its neighbours vote for, a vote being the edge weight, with ties going to the
+smallest genre code. The node's own artist never votes, since otherwise the
+graph would reward recognising the artist and not the genre. A node with no
+admissible neighbour abstains, which counts as an error, and the abstention rate
+is reported. This is \emph{transductive}: the neighbours' labels come from the
+same gallery as the node classified, so the figures describe the graph and not a
+model. They are not comparable with the inductive classifiers of the classical
+block and are never placed in the same table as them.
+
+\paragraph{Comparison between graphs.} For each pair of representations over the
+same nodes: neighbour Jaccard@10 (headline), edge overlap, Spearman correlation
+of the k-occurrences, and ARI between partitions (seed $i$ of one graph against
+seed $i$ of the other, averaged). A statistic that is undefined, such as the
+correlation with a constant k-occurrence, is \texttt{nan} and not an arbitrary
+value. The pairs among the three draws of the random control give the floor of a
+graph that carries no structure. It is \emph{not} the noise floor between seeds
+of a trained model that the criterion for PQ requires; that one needs the trained
+models and is measured later.
+
+\paragraph{Intervals.} Structure is a property of a whole graph, not of a query,
+so there is no per-query resampling. Instead, 200 subsamples are drawn, each
+keeping 80\,\% of the artists of the gallery without replacement and all of their
+tracks, and the graph of every representation is \emph{rebuilt} from the
+surviving nodes, never cropped. The subsamples are the same for every
+representation, which makes the differences between representations paired.
+Inside a subsample Louvain runs with 3 seeds to bound the cost; the point
+estimate keeps 10. Reported intervals are the 2.5th and 97.5th percentiles over
+the subsamples. This is a subsample without replacement, not a bootstrap: its
+interval describes how much a metric moves when a fifth of the artists is left
+out, it understates the variability of the full sampling, it need not contain the
+point estimate (graphs of fewer nodes have different k-occurrence and Louvain
+behaviour), and no p-value is derived from it. Differences are therefore read as
+paired intervals that exclude or include 0, and are stated as descriptive.
+
+\paragraph{Headline metrics and what they are independent of.} The three headline
+structure metrics are the skewness of the k-occurrence, the NMI between Louvain
+communities and genre, and label homophily. The last two are defined with the
+genre labels, so they belong to the proxy-based family of conclusions and
+inherit its circularity; the skewness of the k-occurrence is the only headline
+structure metric that does not use any label, and the report says so wherever it
+is read. All structure numbers on FMA belong to that family until the human
+judgements of MagnaTagATune are available.
+
+\todo{Robustness: neighbour-set Jaccard@k and $\Delta$R@10 under noise, gain,
+pitch shift, time stretch and cropping; and mutual proximity. Written with the
+robustness experiment, not with this block.}
 
 \section{Similarity measures and classical classifiers}
 \label{sec:similarity-measures-protocol}

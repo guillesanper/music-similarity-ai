@@ -137,13 +137,68 @@ from the penultimate layer.}
 \section{Similarity graph}
 \label{sec:graph}
 
-\todo{Brute-force cosine kNN in bounded-memory row blocks. Be explicit that
-self-exclusion is done by row index rather than by comparing similarity values:
-with duplicated vectors a value-based rule silently removes the wrong
-neighbour. Describe the near-duplicate detection and the variants: mutual kNN,
-the $\varepsilon$ threshold, and weighted against unweighted edges. The
-canonical crisp graph is directed kNN by cosine, $k=10$; it is symmetrised by
-union for community and clustering analyses.}
+\subsection{The canonical graph}
+\label{sec:graph-canonical}
+
+The canonical crisp graph is the directed $k$-nearest-neighbour graph by cosine
+similarity with $k=10$. Embeddings are L2-normalised, so the similarity matrix
+is a matrix product, computed by brute force in blocks of 512 rows: peak memory
+is proportional to $512\times N$ and the full $N\times N$ matrix is never
+stored. Self-exclusion is done by row index and not by comparing similarity
+values; with duplicated vectors a value-based rule would remove the wrong
+neighbour. A node $i$ stores its neighbours ordered by decreasing similarity,
+with the similarity as the edge weight.
+
+A graph is a pair of $N\times k$ arrays, so a node may have fewer than $k$
+neighbours (mutual kNN, thresholds): the missing slots are filled with a
+padding value, always at the end of the row, and are not edges. Every
+structural quantity is computed from one sparse adjacency view of the graph
+(\texttt{musicsim/graphs/adjacency.py}), so that all of them agree on what an
+edge is: padding slots and self-loops are not edges, and a neighbour listed
+twice counts once. The view is \emph{directed} ($i\to j$ if $j$ is among the
+neighbours of $i$) or symmetrised. The symmetrisation by union ($i - j$ if
+either direction exists) is the one used by community detection, clustering
+and connectivity; hubness, homophily and reciprocity use the directed view.
+
+\subsection{Which items are nodes}
+\label{sec:graph-gallery}
+
+A graph that is analysed is always built from the items of its own gallery,
+never over the whole corpus and cropped afterwards. Cropping leaves nodes with
+fewer than $k$ neighbours and changes the k-occurrence of those that remain, so
+every structural figure would describe a graph nobody built. On \texttt{fma\_test}
+the graph therefore has the 800 test tracks as candidate nodes, and no edge
+leaves the split.
+
+Near-duplicate groups are collapsed to a single node, the one with the smallest
+item identifier, before the graph is built. Duplicates are detected on one
+\emph{reference} representation (\texttt{mfcc}) with a cosine threshold of
+0.9999, once per gallery, so that every representation's graph has exactly the
+same nodes. Left in, each duplicate pair would be a trivial reciprocal edge that
+inflates reciprocity and clustering. In \texttt{fma\_test} this removes 5 of the
+800 tracks, leaving 795 nodes.
+
+\subsection{Graph comparison and export}
+\label{sec:graph-compare}
+
+Two graphs over the same nodes, in the same order, are compared with four
+statistics (\texttt{musicsim/graphs/compare.py}): the mean over nodes of the
+Jaccard index of the two neighbour sets (the headline); the Jaccard index of the
+two directed edge sets; the Spearman correlation of the two k-occurrences, that
+is, whether the same nodes are hubs; and the adjusted Rand index between two
+Louvain partitions. Comparing graphs with different identifiers is an error and
+not something the code tries to align.
+
+A graph is exported with its node attributes (identifier, genre, artist, split,
+k-occurrence and community) as \texttt{nodes.csv} and \texttt{edges.csv}, and as
+a directed GraphML file that opens in Gephi or Cytoscape
+(\texttt{musicsim/graphs/export.py}). A missing attribute is omitted from the
+GraphML node, because that format cannot store a missing value and an empty
+string would be indistinguishable from a real label.
+
+\todo{The variants of the graph: mutual kNN, the $\varepsilon$ threshold, mutual
+proximity, and weighted against unweighted edges. Written with the variants
+block, not with the structure block.}
 
 \section{Similarity measures}
 \label{sec:similarity-measures}

@@ -61,6 +61,35 @@ Which problems came up and how they were solved. Point at specific files and
 configurations in the repository (\repositorio) so that a claim can be
 checked.}
 
+\paragraph{Structure of the graphs (draft).} I wrote the code that measures what
+a representation does to the kNN graph, and experiment e03 that runs it. The
+sparse adjacency view (\texttt{musicsim/graphs/adjacency.py}) is the single
+place that decides what an edge is, so that hubness, homophily, clustering and
+Louvain cannot disagree about padding slots, self-loops or repeated neighbours.
+\texttt{musicsim/evaluation/hubness.py} computes the k-occurrence, its skewness
+and the hub and antihub fractions; \texttt{structure.py} the homophily,
+reciprocity, clustering and components; \texttt{communities.py} the Louvain
+partitions, their NMI against genre, modularity and stability;
+\texttt{graph\_classification.py} the neighbour vote;
+\texttt{musicsim/graphs/\{gallery, compare, export\}.py} the choice of nodes, the
+comparison between graphs and the export to CSV and GraphML; and
+\texttt{graph\_evaluator.py} puts them together, with the figures of
+\texttt{musicsim/plotting.py}. The configuration is
+\texttt{configs/experiments/e03\_graph\_structure.yaml}.
+
+Four problems shaped the design. First, a graph cropped from a larger one has
+nodes with fewer than $k$ neighbours, so every graph is built inside its own
+gallery. Second, near-duplicate pairs are trivial reciprocal edges, so they are
+collapsed to one node before building. Third, label homophily turned out to be
+the P@10 of the retrieval evaluator under another name; I kept it as a structure
+metric but documented the identity so that it is not read as independent
+evidence. Fourth, the artist subsampling that gives the intervals is a
+subsample without replacement, not a bootstrap, so I report it as a sensitivity
+interval and derive no p-value from it. Each module has tests with values
+computed by hand (a directed ring, a star, two cliques with aligned labels) and
+one test checks that homophily and the P@10 of the retrieval code coincide
+(\texttt{tests/test\_structure.py}).
+
 \todo{Both authors: state jointly-owned work explicitly, since the baseline and
 the shared interface contract (datasets, MFCC, the kNN graph, retrieval), the
 final model comparison (e08, e09, conclusions and the introduction) and this

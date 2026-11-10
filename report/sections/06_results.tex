@@ -33,15 +33,84 @@ protocol.}
 \section{Absolute quality}
 \label{sec:results-absolute}
 
-\todo{SQ1. Experiments e01, e02, e03, e04, e07. MFCC against the random
+\todo{SQ1. Experiments e01, e02, e04, e07. MFCC against the random
 control on FMA, for the three exclusion variants and both query protocols,
 with intervals by query and by artist, and the per-genre breakdown (e01);
-paired differences under PCA against the untouched embedding (e02); the
-structural profile of the graph: communities against genres, giant component,
-k-occurrence distribution and hubs (e03); agreement with the MTT triplets
-against the reference points of the evaluation protocol, and the faceted
-relevance results on MTT (e04); robustness of the neighbour sets under
-perturbation (e07).}
+paired differences under PCA against the untouched embedding (e02); agreement
+with the MTT triplets against the reference points of the evaluation protocol,
+and the faceted relevance results on MTT (e04); robustness of the neighbour sets
+under perturbation (e07).}
+
+\subsection{Structure of the graph}
+\label{sec:results-structure}
+
+\emph{Proxy-based (genre) evidence only. Provisional: figures from the e03 run
+of 6 November 2026; they are regenerated into \texttt{report/tables/generated}
+before submission.} \todo{Replace the numbers in this subsection by the generated
+table, and add the three figures of the run (k-occurrence distribution, community
+sizes, community $\times$ genre matrix).}
+
+On \texttt{fma\_test} (795 nodes after collapsing 5 near-duplicates, $k=10$)
+the MFCC graph is clearly more structured than the random control, on the three
+headline metrics (Table~\ref{tab:structure-test}). Its k-occurrence is
+right-skewed (skewness 2.37, interval over artist subsamples [1.96, 2.62]) where
+that of a random embedding is almost symmetric (0.18, [0.05, 0.33]); label
+homophily is 0.35 [0.33, 0.39] against 0.12 [0.12, 0.15], and the NMI between
+Louvain communities and genre is 0.19 [0.15, 0.22] against 0.03 [0.03, 0.04].
+The intervals do not overlap. Both graphs are one connected component. As
+expected, the neighbour-vote accuracy follows homophily (0.24 against 0.07),
+and is a description of the graph, not a classifier score
+(Section~\ref{sec:structure-protocol}).
+
+\begin{table}[t]
+\centering
+\caption{Headline structure metrics on \texttt{fma\_test}, $k=10$, 795 nodes.
+Interval: 2.5th--97.5th percentile over 200 paired subsamples of 80\,\% of the
+artists, graph rebuilt in each; a sensitivity interval, not a confidence
+interval. Proxy-based family. Provisional.}
+\label{tab:structure-test}
+\begin{tabular}{lccc}
+\hline
+ & Skewness of $N_{10}$ & Label homophily & NMI Louvain--genre \\
+\hline
+\texttt{mfcc}      & 2.37 [1.96, 2.62] & 0.35 [0.33, 0.39] & 0.19 [0.15, 0.22] \\
+\texttt{random\_s0} & 0.18 [0.05, 0.33] & 0.12 [0.12, 0.15] & 0.03 [0.03, 0.04] \\
+\hline
+\end{tabular}
+\end{table}
+
+Three points qualify these numbers.
+\begin{itemize}
+  \item \textbf{Homophily is not a second retrieval result.} It equals the P@10
+        of the \texttt{raw} variant, and the random control's value (0.12) is
+        the chance level for eight genres.
+  \item \textbf{The whole corpus gives the same picture at a larger scale.} On
+        \texttt{fma\_all} (7978 nodes, point estimates only) the skewness is 4.70
+        for \texttt{mfcc} against about 0.3 for the random draws, homophily
+        0.327 against 0.125, and the giant component holds all the nodes. The NMI is
+        0.133 for \texttt{mfcc}, below the range of 0.15 to 0.30 the plan
+        expected; the Louvain resolution was left at 1 and not tuned to enter
+        that range. \todo{Say whether this is read as a weaker alignment between
+        timbre communities and genre at this scale, after the per-community genre
+        matrix has been inspected.}
+  \item \textbf{Intervals are not centred on the point estimate.} The subsamples
+        have 80\,\% of the artists and therefore fewer nodes, which changes the
+        k-occurrence and the communities; the estimate on the full gallery can
+        lie at an edge of its interval or, for the comparison between graphs
+        below, outside it.
+\end{itemize}
+
+Reducing MFCC with PCA changes the graph progressively. The neighbour Jaccard@10
+between the MFCC graph and its PCA reduction is 0.94 at 64 dimensions, 0.80 at 48,
+0.64 at 32 and 0.40 at 16, while it is 0.007 to 0.008 between MFCC and any of the
+three random draws, and 0.008 among the random draws themselves. The latter is
+the floor of a graph without structure; whether the differences between
+\emph{trained} representations exceed the noise between seeds of the same model
+is a question for the criterion of Section~\ref{sec:pq-criterion} and cannot be
+answered with the representations available so far. \todo{PCA deltas of the
+headline metrics against the untouched embedding, with their paired intervals,
+from \texttt{structure\_deltas.csv}; \texttt{mert} rows when the model is
+extracted on both galleries.}
 
 \section{Model comparison}
 \label{sec:results-comparison}
