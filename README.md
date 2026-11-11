@@ -196,7 +196,7 @@ musicsim show configs/experiments/e01_mfcc_baseline.yaml     # resolve it, run n
 | **e01 (MERT)** MERT baseline | Does MERT's titular layer retrieve same-genre neighbours better than MFCC and chance? | same `metrics/` files, with `mert` as the main representation and `mfcc`/`random` as baselines |
 | **e02** PCA ablation | Does reducing MFCC's 80 dimensions cost retrieval quality? | same `metrics/` files, one run per `-o embedding.pca.n_components=` override (16, 32, 48) |
 | **e03** Graph structure | Do different representations induce kNN graphs with different structure? | `metrics/structure.csv` (k-occurrence skewness, antihub and hub fractions, reciprocity, clustering, components, genre homophily), `metrics/hubness.csv` (k-occurrence per item), and the kNN graph of every representation under `graphs/<representation>/<gallery>/knn<k>/`; `mfcc`, its PCA reductions (16–64) and three `random` seeds on `fma_test` (`fma_all` with `-o evaluation.structure.galleries=[fma_all]`), near-duplicates collapsed |
-| **e04** Human triplets | Do the representations agree with people's odd-one-out judgements on MagnaTagATune? | `metrics/triplets.csv` (share of the 860 similarity constraints satisfied, unweighted, vote-weighted and with margin ≥ 2, 95 % intervals clustered by triplet), `metrics/triplets_per_constraint.csv` (hit of every constraint), `metrics/triplets_deltas.csv` (paired differences, provisional Holm on the unweighted variant); `mfcc` and three `random` seeds |
+| **e04** Human triplets | Do the representations agree with people's odd-one-out judgements on MagnaTagATune? | `metrics/triplets.csv` (share of the 860 similarity constraints satisfied, unweighted, vote-weighted and with margin ≥ 2, 95 % intervals clustered by triplet), `metrics/triplets_per_constraint.csv` (hit of every constraint), `metrics/triplets_deltas.csv` (paired differences, provisional Holm on the unweighted variant); `mert` (layer 6, chosen on FMA validation), `mfcc` and three `random` seeds |
 
 Later phases add one row each: classical
 classification, graph variants, robustness, model comparison, fuzzy modelling
@@ -268,7 +268,10 @@ default) is available but should only be switched on after checking that it
 agrees with `float32`. On a single CUDA GPU the full `fma_small` extraction
 (7994 tracks) took **27 minutes**, against roughly 9 hours on the CPU; the
 `gpu`-marked tests (`pytest -m gpu`) check the device path on a machine that
-has one and skip themselves otherwise.
+has one and skip themselves otherwise. The MagnaTagATune cache
+(`outputs/cache/mtt/mert-layers-*`, 25 860 clips; the three mp3 files that are
+empty in the MagnaTagATune archive fail, as they do with `mfcc`) is extracted
+the same way on a GPU and copied over; e04 then reads it on any machine.
 
 e01 (MERT) on `fma_test` (dedup, headline metrics, 95 % intervals by
 bootstrap over artists), from the run of

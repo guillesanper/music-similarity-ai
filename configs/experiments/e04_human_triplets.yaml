@@ -19,9 +19,14 @@ experiment: e04_human_triplets
 # constraints use. No graph: the metric compares three clips at a time.
 stages: [extract, embed, evaluate]
 
-# The random extractor is the chance floor; three seeds show how much it moves.
+# mert keeps the titular layer chosen on FMA validation (extractor.mert_layer
+# in configs/extractors/mert.yaml): choosing it again on these constraints
+# would select on the evaluation itself. Its 13-layer cache is extracted on a
+# GPU and copied over (README, MERT). The random extractor is the chance floor;
+# three seeds show how much it moves.
 representations:
   - mfcc
+  - mert
   - label: random_s0
     extractor: random
     overrides: {seed: 0}
@@ -40,6 +45,7 @@ evaluation:
     # Paired differences (first minus second), Holm-corrected over the
     # unweighted variant of every pair listed here.
     comparisons:
+      - [mert, mfcc]
       - [mfcc, random_s0]
 
 outputs:
