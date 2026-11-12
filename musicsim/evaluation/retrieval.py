@@ -73,6 +73,7 @@ __all__ = [
     "RetrievalEvaluator",
     "compute_per_query_metrics",
     "gallery_mask",
+    "metrics_from_order",
     "query_rows",
 ]
 
@@ -119,11 +120,6 @@ def compute_per_query_metrics(
         raise ValueError(f"k={max(ks)} does not fit a gallery of {n} items")
 
     group = np.asarray(group)
-    n_groups = int(group.max()) + 1
-    group_sizes = np.bincount(group, minlength=n_groups)
-    disc = 1.0 / np.log2(np.arange(2, max(ks) + 2))
-    cum_disc = np.cumsum(disc)
-    positions = np.arange(n)
 
     blocks: list[pd.DataFrame] = []
     for start in range(0, len(rows), block_rows):
@@ -132,37 +128,63 @@ def compute_per_query_metrics(
         same_group = group[block][:, None] == group[None, :]
         S = np.where(same_group, -np.inf, S)
         order = np.argsort(-S, axis=1, kind="stable")
-
-        rel_full = genre[order] == genre[block][:, None]
-        valid_len = n - group_sizes[group[block]]
-        rel = rel_full & (positions[None, :] < valid_len[:, None])
-        n_rel = rel.sum(axis=1)
-        if (n_rel < 1).any():
-            bad = ids[block[n_rel < 1]]
-            raise ValueError(
-                f"{len(bad)} quer{'y has' if len(bad) == 1 else 'ies have'} no relevant "
-                f"candidate outside their own exclusion group, e.g. {bad[:3].tolist()}"
-            )
-
-        item_ids = ids[block]
-        out: dict[str, list] = {"item_id": [], "metric": [], "k": [], "value": []}
-
-        for k in ks:
-            rel_k = rel[:, :k]
-            _append(out, item_ids, "P", k, rel_k.mean(axis=1))
-            _append(out, item_ids, "R", k, rel_k.sum(axis=1) / n_rel)
-            dcg = (rel_k.astype(np.float64) * disc[:k][None, :]).sum(axis=1)
-            idcg = cum_disc[np.minimum(k, n_rel) - 1]
-            _append(out, item_ids, "nDCG", k, dcg / idcg)
-
-        cum_rel = np.cumsum(rel, axis=1).astype(np.float64)
-        precision_curve = cum_rel / np.arange(1, n + 1)
-        average_precision = (precision_curve * rel).sum(axis=1) / n_rel
-        _append(out, item_ids, "MAP", 0, average_precision)
-
-        blocks.append(pd.DataFrame(out))
+        blocks.append(metrics_from_order(order, block, ids, group, genre, ks))
 
     return pd.concat(blocks, ignore_index=True)
+
+
+def metrics_from_order(
+    order: np.ndarray,
+    block: np.ndarray,
+    ids: np.ndarray,
+    group: np.ndarray,
+    genre: np.ndarray,
+    ks: Sequence[int],
+) -> pd.DataFrame:
+    """The per-query metrics of :func:`compute_per_query_metrics` from given rankings.
+
+    ``order`` is ``(len(block), N)``: row ``r`` is the full ranking of the
+    gallery for query ``block[r]``, best first, with the query's exclusion
+    group (itself included) in the last ``group_size`` positions. How the
+    ranking was obtained (cosine, a graph completed by cosine) is the caller's
+    business; the definition of P, R, nDCG and MAP lives only here, so every way
+    of ranking is scored by the same code.
+    """
+    ks = sorted({int(k) for k in ks})
+    n = order.shape[1]
+    group_sizes = np.bincount(group, minlength=int(group.max()) + 1)
+    disc = 1.0 / np.log2(np.arange(2, max(ks) + 2))
+    cum_disc = np.cumsum(disc)
+    positions = np.arange(n)
+
+    rel_full = genre[order] == genre[block][:, None]
+    valid_len = n - group_sizes[group[block]]
+    rel = rel_full & (positions[None, :] < valid_len[:, None])
+    n_rel = rel.sum(axis=1)
+    if (n_rel < 1).any():
+        bad = ids[block[n_rel < 1]]
+        raise ValueError(
+            f"{len(bad)} quer{'y has' if len(bad) == 1 else 'ies have'} no relevant "
+            f"candidate outside their own exclusion group, e.g. {bad[:3].tolist()}"
+        )
+
+    item_ids = ids[block]
+    out: dict[str, list] = {"item_id": [], "metric": [], "k": [], "value": []}
+
+    for k in ks:
+        rel_k = rel[:, :k]
+        _append(out, item_ids, "P", k, rel_k.mean(axis=1))
+        _append(out, item_ids, "R", k, rel_k.sum(axis=1) / n_rel)
+        dcg = (rel_k.astype(np.float64) * disc[:k][None, :]).sum(axis=1)
+        idcg = cum_disc[np.minimum(k, n_rel) - 1]
+        _append(out, item_ids, "nDCG", k, dcg / idcg)
+
+    cum_rel = np.cumsum(rel, axis=1).astype(np.float64)
+    precision_curve = cum_rel / np.arange(1, n + 1)
+    average_precision = (precision_curve * rel).sum(axis=1) / n_rel
+    _append(out, item_ids, "MAP", 0, average_precision)
+
+    return pd.DataFrame(out)
 
 
 def _append(

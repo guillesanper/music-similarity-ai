@@ -1,0 +1,56 @@
+# E06 - Do the conclusions about representations survive a change of graph?
+# Retrieval quality (R@10, MAP, nDCG@10) under seven graph variants: kNN with
+# k in {5, 10, 20, 50}, mutual kNN, an epsilon graph with the kNN-10 edge count,
+# and mutual proximity. The result is the matrix of deltas between
+# representations, read by sign (no Holm: sensitivity analysis). Family A
+# (genre proxy). Report: section 06_results, "Sensitivity".
+
+defaults:
+  - ../base.yaml
+  - ../datasets/fma_small.yaml
+  - ../extractors/mfcc.yaml
+
+experiment: e06_graph_variants
+
+# The representations are extracted and embedded by the evaluator itself.
+stages: [evaluate]
+
+representations:
+  - mfcc
+  - label: mfcc_pca16
+    extractor: mfcc
+    overrides: {embedding.pca.enabled: true, embedding.pca.n_components: 16}
+  - label: mfcc_pca32
+    extractor: mfcc
+    overrides: {embedding.pca.enabled: true, embedding.pca.n_components: 32}
+  - label: mfcc_pca48
+    extractor: mfcc
+    overrides: {embedding.pca.enabled: true, embedding.pca.n_components: 48}
+  - label: mfcc_pca64
+    extractor: mfcc
+    overrides: {embedding.pca.enabled: true, embedding.pca.n_components: 64}
+  - label: random_s0
+    extractor: random
+    overrides: {seed: 0}
+  - label: random_s1
+    extractor: random
+    overrides: {seed: 1}
+  - label: random_s2
+    extractor: random
+    overrides: {seed: 2}
+
+evaluation:
+  retrieval:
+    enabled: false
+  variants:
+    enabled: true
+    # Only the test gallery: mutual proximity is cubic in the number of items.
+    galleries: [fma_test]
+    # Deltas are each representation minus this one; near-duplicates are
+    # detected on it.
+    reference: mfcc
+    mutual_proximity_max_nodes: 2000
+
+outputs:
+  metrics: [variants_per_query.csv, variants_summary.csv, variants_deltas.csv]
+  figures: []

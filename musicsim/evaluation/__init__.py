@@ -10,6 +10,7 @@ from __future__ import annotations
 from musicsim.evaluation import (
     graph_evaluator,  # noqa: F401  (registers "structure")
     retrieval,  # noqa: F401  (registers "retrieval")
+    variants,  # noqa: F401  (registers "variants")
 )
 from musicsim.evaluation.base import Evaluator
 
