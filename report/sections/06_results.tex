@@ -39,8 +39,9 @@ with intervals by query and by artist, and the per-genre breakdown (e01);
 paired differences under PCA against the untouched embedding (e02); the
 structural profile of the graph: communities against genres, giant component,
 k-occurrence distribution and hubs (e03); agreement with the MTT triplets
-against the reference points of the evaluation protocol, and the faceted
-relevance results on MTT (e04); robustness of the neighbour sets under
+against the reference points of the evaluation protocol (e04, reported in
+Section \ref{sec:results-proxy}), and the faceted relevance results on MTT;
+robustness of the neighbour sets under
 perturbation (e07).}
 
 \section{Model comparison}
@@ -73,9 +74,147 @@ correlation (F4), and, if F2 is in scope, the fitted rule base.}
 \section{Proxy versus perception}
 \label{sec:results-proxy}
 
-\todo{SQ4. Experiments e04, e08. Kendall $\tau$ between the genre-based and the
-human-judgement-based rankings of the representations, and whether the SQ2
-conclusions drawn on FMA survive on MTT.}
+% Every number below comes from two runs, recorded with their commit in
+% run.json: e01 (MERT) on fma_test, run 20261103-040002_7999db47 at commit
+% 63f2ae1, and e04 on MagnaTagATune, run 20261111-120139_17ee6e7d with the
+% configuration of commit 9a455f4. Both use 1000 bootstrap resamples; the final
+% tables are regenerated with 10 000 by `musicsim export`.
+
+SQ4 asks whether the conclusions drawn with the genre proxy hold up against
+human judgements. The two families of ground truth measure different things,
+and the tables keep them apart. Family~A scores retrieval against
+\texttt{genre\_top} on FMA: it measures \emph{similarity by genre labels}, and
+for any model trained with genre as its signal it measures, in part, how well
+that model classifies genre. Family~B scores agreement with the MagnaTagATune
+constraints (Section \ref{sec:triplet-protocol}): it measures \emph{perceived
+similarity}, on another corpus, with no label of any kind. Neither \texttt{mfcc}
+nor \texttt{mert} is trained on genre, so the comparison in this section is not
+yet circular; the separation is kept from the first table so that the siamese
+models, which are, are reported the same way.
+
+\subsection{Family A: similarity by genre labels (FMA test)}
+\label{sec:results-proxy-genre}
+
+\begin{table}[t]
+  \centering
+  \caption[Family A: similarity by genre labels on FMA test]{Family A,
+    similarity by genre labels: retrieval on the
+    \texttt{fma\_test} gallery, relevance = same \texttt{genre\_top},
+    near-duplicates removed. 95\,\% percentile bootstrap intervals over
+    artists, each representation on its own. Experiment e01 (MERT).}
+  \label{tab:proxy-family-a}
+  \begin{tabular}{@{}llll@{}}
+    \toprule
+    Representation & R@10 & MAP & nDCG@10 \\
+    \midrule
+    \texttt{mert} (layer 6) & 0.059 [0.049, 0.066] & 0.361 [0.297, 0.415] & 0.609 [0.526, 0.672] \\
+    \texttt{mfcc}           & 0.035 [0.029, 0.040] & 0.240 [0.209, 0.271] & 0.364 [0.299, 0.419] \\
+    \texttt{random}         & 0.013 [0.012, 0.014] & 0.132 [0.130, 0.133] & 0.129 [0.120, 0.137] \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+On genre, \texttt{mert} is ahead of \texttt{mfcc} on all three headline
+metrics, and the intervals of the two do not overlap on any of them
+(Table \ref{tab:proxy-family-a}). The intervals are per representation,
+though: the paired difference over the same resampled artists, with Holm's
+correction, is still to be computed, and until then the gap is a strong
+indication rather than a tested result.
+
+\subsection{Family B: perceived similarity (human triplets)}
+\label{sec:results-proxy-human}
+
+\begin{table}[t]
+  \centering
+  \caption[Family B: agreement with the MagnaTagATune constraints]{Family B,
+    perceived similarity: share of the MagnaTagATune
+    constraints each representation satisfies. 95\,\% percentile bootstrap
+    intervals over the 337 triplets. Unweighted (headline) and vote-weighted
+    over the 860 constraints; margin $\geq 2$ over 642 constraints in 282
+    triplets. Experiment e04.}
+  \label{tab:proxy-family-b}
+  \begin{tabular}{@{}llll@{}}
+    \toprule
+    Representation & Unweighted & Vote-weighted & Margin $\geq 2$ \\
+    \midrule
+    \texttt{mert} (layer 6) & 0.679 [0.645, 0.714] & 0.771 [0.716, 0.821] & 0.731 [0.691, 0.766] \\
+    \texttt{mfcc}           & 0.656 [0.625, 0.689] & 0.702 [0.635, 0.765] & 0.684 [0.649, 0.724] \\
+    \texttt{random}, seed 0 & 0.494 [0.454, 0.529] & 0.460 [0.395, 0.525] & 0.497 [0.449, 0.542] \\
+    \texttt{random}, seed 1 & 0.463 [0.424, 0.499] & 0.462 [0.388, 0.527] & 0.461 [0.422, 0.506] \\
+    \texttt{random}, seed 2 & 0.514 [0.479, 0.552] & 0.521 [0.448, 0.588] & 0.506 [0.465, 0.549] \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\begin{table}[t]
+  \centering
+  \caption[Family B: paired differences between representations]{Family B,
+    paired differences (first minus second) over the same
+    resampled triplets, with their 95\,\% interval and bootstrap $p$-value.
+    Holm's correction runs over the unweighted variant of the two declared
+    pairs and is provisional (Section \ref{sec:triplet-protocol}); the other
+    variants are uncorrected. With 1000 resamples the smallest attainable
+    $p$ is 0.002.}
+  \label{tab:proxy-family-b-deltas}
+  \begin{tabular}{@{}lllll@{}}
+    \toprule
+    Pair & Variant & $\Delta$ [95\,\% CI] & $p$ & $p_{\text{Holm}}$ \\
+    \midrule
+    \texttt{mert} $-$ \texttt{mfcc}     & unweighted    & $+0.023$ [$-0.016$, $0.062$] & 0.258 & 0.258 \\
+                                        & vote-weighted & $+0.070$ [$-0.005$, $0.148$] & 0.070 & --- \\
+                                        & margin $\geq 2$ & $+0.047$ [$0.001$, $0.086$] & 0.052 & --- \\
+    \midrule
+    \texttt{mfcc} $-$ \texttt{random}, seed 0 & unweighted    & $+0.162$ [$0.111$, $0.215$] & 0.002 & 0.004 \\
+                                        & vote-weighted & $+0.242$ [$0.133$, $0.350$] & 0.002 & --- \\
+                                        & margin $\geq 2$ & $+0.187$ [$0.119$, $0.253$] & 0.002 & --- \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+The baseline behaves as the literature predicts. \texttt{mfcc} satisfies
+0.656 [0.625, 0.689] of the constraints, within the 63.6 to 64.6\,\% that an
+untrained MFCC bag of audio words reaches on the same constraints
+\cite{Karamanolakis2016}, and its paired difference over \texttt{random} is
+$+0.162$ [0.111, 0.215], which survives Holm's correction
+(Table \ref{tab:proxy-family-b-deltas}). The three random seeds land between
+0.463 and 0.514; the spread between seeds is as wide as the interval of any one
+of them, so the seed whose interval stops just below 0.5 is chance, not
+disagreement.
+
+\texttt{mert} is ahead of \texttt{mfcc} in all three variants, but by less than
+on genre, and the headline difference is not significant: $+0.023$
+[$-0.016$, $0.062$], $p = 0.258$, and the same after Holm. The gap widens where
+people agreed more, $+0.070$ [$-0.005$, $0.148$] weighted by votes and
+$+0.047$ [0.001, 0.086] on the constraints with margin at least 2, which is
+consistent with MERT getting the clearer cases right more often, but neither is
+the headline variant and neither is corrected. The margin variant needs a word
+of care: its interval excludes zero while its $p$-value is 0.052. Both come
+from the same 1000 resampled differences, of which 25 are at or below zero. The
+2.5th percentile, interpolated, sits just above zero; the $p$-value adds one to
+each tail, $2 \cdot 26 / 1001 = 0.052$. The case sits on the boundary and is
+read as not established; the $10\,000$ resamples of the final tables will
+settle on which side of it it falls.
+
+\subsection{Do the conclusions transfer?}
+\label{sec:results-proxy-transfer}
+
+\todo{The Kendall $\tau$ between the genre-based and the human-based rankings
+needs the representations of e08; with \texttt{mert}, \texttt{mfcc} and
+\texttt{random} alone it is descriptive at best, and is not reported.}
+The order is the same in both families: \texttt{mert}, then \texttt{mfcc},
+then \texttt{random}. What does not transfer is the size of the gap. On genre,
+\texttt{mert} reaches a Recall@10 of 0.059 [0.049, 0.066] against 0.035
+[0.029, 0.040] for \texttt{mfcc}, intervals that do not overlap; on human
+judgements the paired difference is $+0.023$ [$-0.016$, $0.062$] and its
+interval contains zero. Two readings fit these numbers and this evaluation cannot tell
+them apart. Either part of MERT's advantage on FMA is an advantage on the
+genre proxy specifically, which is what SQ4 asks; or MagnaTagATune hides an
+advantage that is there, through its power (about $\pm 4$ points on a paired
+difference), its 8\,kHz bandwidth, or its domain
+(Section \ref{sec:triplet-protocol}). The answer to SQ4 for this pair of
+representations is therefore partial: the direction of the conclusion
+survives, its strength does not, and the difference between the two
+representations on human judgements is not significant at this sample size.
 
 \section{Sensitivity}
 \label{sec:results-sensitivity}

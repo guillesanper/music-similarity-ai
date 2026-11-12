@@ -34,10 +34,11 @@ steps, no constants to edit. Methodological detail lives in [`docs/`](docs/) and
 in the report under [`report/`](report/), not in this file.
 
 > **Status.** The current milestone is the comparison of MERT against the MFCC
-> baseline on FMA. Both run end to end, and the first MERT results are in
-> [MERT](#mert); they are provisional until the paired comparison with Holm
-> correction and the MagnaTagATune evaluation are done. See [Status](#status)
-> for what runs today and what each stage still waits for.
+> baseline. Both run end to end on FMA and on MagnaTagATune, and the results
+> are in [MERT](#mert) and [Human triplets on MagnaTagATune](#human-triplets-on-magnatagatune).
+> On FMA they are provisional until the paired comparison with Holm correction
+> is done. See [Status](#status) for what runs today and what each stage still
+> waits for.
 
 ## Contents
 
@@ -162,7 +163,7 @@ the checksums, the licence and the expected layout.
 | Corpus | Instructions | Size | Used for | State |
 |---|---|---|---|---|
 | FMA small | [`datasets/fma/README.md`](datasets/fma/README.md) | ~7.5 GB | Training and evaluation | **done** |
-| MagnaTagATune | [`datasets/mtt/README.md`](datasets/mtt/README.md) | ~3 GB | External evaluation: human triplets, tags | pending |
+| MagnaTagATune | [`datasets/mtt/README.md`](datasets/mtt/README.md) | ~3 GB | External evaluation: human triplets, tags | **done** |
 
 `musicsim index` asserts the counts every later number depends on: **7994**
 usable FMA tracks across 8 genres, with no artist shared between splits. If an
@@ -271,7 +272,9 @@ agrees with `float32`. On a single CUDA GPU the full `fma_small` extraction
 has one and skip themselves otherwise. The MagnaTagATune cache
 (`outputs/cache/mtt/mert-layers-*`, 25 860 clips; the three mp3 files that are
 empty in the MagnaTagATune archive fail, as they do with `mfcc`) is extracted
-the same way on a GPU and copied over; e04 then reads it on any machine.
+the same way on a GPU and copied over; e04 then reads it on any machine. On an
+NVIDIA GeForce RTX 2070 (8 GB) the 25 863 clips took **54 minutes** (about 8
+clips/s), against roughly 49 hours estimated on the CPU (6.8 s per clip).
 
 e01 (MERT) on `fma_test` (dedup, headline metrics, 95 % intervals by
 bootstrap over artists), from the run of
@@ -287,11 +290,35 @@ These figures are **provisional**. The intervals belong to each representation
 separately: the paired difference between `mert` and `mfcc`, with the same
 resampled artists for both and Holm correction, is still pending. Relevance is
 `genre_top`, so the table measures similarity by genre labels only; the
-external evaluation against human judgements on MagnaTagATune is also pending.
+evaluation against human judgements is in
+[Human triplets on MagnaTagATune](#human-triplets-on-magnatagatune).
 `mfcc`'s nDCG@10 differs from the reference in
 [Running experiments](#running-experiments) in the third decimal because
 near-duplicates are detected on the experiment's main representation, here
 `mert`.
+
+#### Human triplets on MagnaTagATune
+
+e04 on the 860 similarity constraints of MagnaTagATune (share satisfied, 95 %
+intervals by bootstrap over the 337 triplets), from the run of
+`configs/experiments/e04_human_triplets.yaml` at commit `9a455f4`. `mert` keeps
+the layer chosen on FMA validation; nothing is re-selected on the constraints.
+
+| Representation | Unweighted (headline) | Vote-weighted | Margin ≥ 2 |
+|---|---|---|---|
+| `mert` (layer 6) | 0.679 [0.645, 0.714] | 0.771 [0.716, 0.821] | 0.731 [0.691, 0.766] |
+| `mfcc` | 0.656 [0.625, 0.689] | 0.702 [0.635, 0.765] | 0.684 [0.649, 0.724] |
+| `random` (seed 0) | 0.494 [0.454, 0.529] | 0.460 [0.395, 0.525] | 0.497 [0.449, 0.542] |
+
+`mfcc` matches the published figure for an untrained MFCC bag of audio words
+(63.6–64.6 %, Karamanolakis 2016) and beats chance: paired difference over
+`random` seed 0 +0.162 [0.111, 0.215], significant after Holm. `mert` is ahead
+of `mfcc` but **not significantly**: +0.023 [−0.016, 0.062], p = 0.258, the
+same after Holm. On genre (the table above) the gap is clear; on human
+judgements it is small. The Holm family is provisional (two pairs, 1000
+resamples). Seeds 1 and 2 of `random` also stay at chance; their intervals are
+in `metrics/triplets.csv` and in the report, section 6.6, which also discusses the limits of this
+evaluation (8 kHz bandwidth, domain, ±3–5 points of power).
 
 #### Precomputed MERT layers
 
@@ -369,7 +396,7 @@ acceptance criterion and adds its draft of the corresponding report section.
 | **S1 Baselines** | Paired MERT–MFCC difference with Holm correction | pending |
 | **S2 Graphs** | Structure and hubness of the kNN graph (`structure` evaluator, e03) | **in progress** — done: hubness, reciprocity, homophily, clustering, components, near-duplicate collapsing and writing the graphs to disk. Missing: communities (NMI against genre), subsampling confidence intervals, comparison between graphs, export, figures. Point estimates on `fma_test` (795 nodes after collapsing 5 near-duplicates, k = 10, no confidence intervals): k-occurrence skewness 2.37 for `mfcc` vs. 0.18–0.44 for three `random` seeds, label homophily 0.35 vs. 0.12–0.13, reciprocity 0.34 vs. 0.83 |
 | **S2 Graphs** | Graph variants and robustness, similarity measures, fuzzy graphs and memberships | pending |
-| **S2 Graphs** | MagnaTagATune ground truth and human-triplet evaluation | pending |
+| **S2 Graphs** | MagnaTagATune ground truth and human-triplet evaluation | **done** — download and index of the 25 863 clips, the 860 constraints reproducing Wolff et al. 2012 exactly, agreement evaluator and e04 with `mert`, `mfcc` and `random`; results in [Human triplets on MagnaTagATune](#human-triplets-on-magnatagatune). Tag-based relevance on MTT is still pending |
 | **S2 Graphs** | Classical classification and probing | pending |
 | **S3 Siamese** | Siamese (spectrogram, embedding, descriptors), triplet and CNN | pending |
 | **S4 Comparison** | Paired model comparison, export, final writing | pending |

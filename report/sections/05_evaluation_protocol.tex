@@ -76,18 +76,98 @@ and not on two independent means.}
 \section{Agreement with human judgements}
 \label{sec:triplet-protocol}
 
-\todo{For each constraint $(s, p, n)$, a hit is $\cos(s,p) > \cos(s,n)$, with
-ties counted as one half. The headline number is the unweighted mean over the
-860 constraints, which is what the literature reports; the vote-weighted mean
-and the subset with margin at least 2 are variants. Intervals cluster by
-triplet, 337 clusters. Reference points for the table: chance is 0.5, a random
-embedding is the negative control, tag Jaccard reaches about 0.57, genre reaches
-0.90 on the 12\,\% of constraints where it decides at all, MFCC audio-words
-reach 63.6 to 64.6\,\% \cite{Karamanolakis2016}, and metrics learned on the
-constraints themselves reach 69.5 to 75.6\,\% \cite{Wolff2012}. State the
-limitation plainly: 860 constraints in 337 triplets give an interval of roughly
-$\pm 3$ to 5 points, which separates a baseline from a strong model but not two
-close variants.}
+The second family of ground truth does not use genre at all. It is the set of
+similarity constraints derived from the odd-one-out votes of MagnaTagATune
+\cite{Law2009}, exactly as Wolff et al.\ derive them \cite{Wolff2012}: a vote
+for the outlier $k$ of a presented triplet $(i, j, k)$ yields the two
+constraints $d(i,j) < d(i,k)$ and $d(j,i) < d(j,k)$, and when two constraints
+contradict each other the opposing votes are subtracted, so that only the net
+majority survives, with the number of votes left as its \emph{margin}. The
+derivation, and the counts it reproduces, are in Section \ref{sec:triplets}:
+860 constraints of total margin 6898, over 337 triplets of clips and 993
+distinct clips. The code asserts every one of those counts, so a different
+file cannot pass unnoticed.
+
+\paragraph{Metric.} A constraint $(s, p, n)$ is satisfied when
+$\cos(s, p) > \cos(s, n)$, on embeddings normalised to unit length, as
+everywhere else. An exact tie counts as one half, the chance value, so that a
+representation that cannot tell two clips apart neither gains nor loses
+anything. The headline number is the plain mean over the 860 constraints,
+because that is the figure the literature reports and the only one a reader
+can compare with published work. Two variants are reported next to it as
+secondary readings: the \emph{vote-weighted} mean, in which each constraint
+counts as many times as its margin, so that constraints people agreed on more
+weigh more; and the mean over the 642 constraints (282 triplets) with a margin
+of at least 2, which leaves out the 218 constraints that rest on a single net
+vote. The metric needs no gallery and no relevance function: it looks at three
+clips at a time.
+
+\paragraph{Uncertainty.} The constraints of one triplet share their three clips
+and their voters, so they are not independent. Every interval is therefore a
+95\,\% percentile bootstrap over the 337 triplets, not over the constraints
+(Section \ref{sec:uncertainty}). A difference between two representations is
+the paired version: both are scored on the same resampled triplets, and the
+interval is on the difference. The vote-weighted variant needs no weighted
+bootstrap: each constraint is repeated as many times as its margin before
+resampling, so drawing a triplet brings in its constraints with their weights
+and the mean of a resample is the weighted mean of what was drawn. This
+arrangement is ours; it is exact because margins are whole numbers of votes.
+The $p$-value of a difference comes from the same resamples, by inverting the
+percentile interval at zero, with one added to each tail so that a finite
+number of resamples never certifies an exact zero; the smallest value it can
+take with $B$ resamples is $2/(B+1)$. Holm's correction is applied over the
+headline variant of every pair the experiment declares; the vote-weighted and
+margin variants are reported uncorrected. The correction is
+\emph{provisional} until the family holds every representation of the report,
+and the final tables use $10\,000$ resamples instead of $1000$: with $1000$,
+a family of more than 25 comparisons could not survive Holm whatever the data
+said.
+
+\paragraph{Scaling on MagnaTagATune.} Every MagnaTagATune clip is extracted and
+embedded, not only the 993 that carry a constraint, and the standardisation
+(and the PCA, where an experiment uses one) is fitted on all of them rather
+than on a training split. This is legitimate here and nowhere else: no label
+takes part in the triplet metric, so unsupervised statistics fitted on the
+evaluated clips leak nothing. It is preferred to reusing the statistics fitted
+on FMA because MagnaTagATune carries nothing above 8\,kHz, which would shift
+every vector in the same direction, and the cosine is not invariant to a
+shift. The decision is ours. On FMA, where genre is the relevance signal, the
+scaler is always fitted on training alone. Nothing about a representation is
+re-selected on these constraints either: \texttt{mert} keeps the layer chosen
+on FMA validation (Section \ref{sec:model-selection-protocol}), because
+choosing it again here would select on the evaluation itself.
+
+\paragraph{Reference points.} Chance is 0.5. A random embedding, run with
+three seeds, is the negative control and shows how far chance alone moves the
+figure. Without any audio, Jaccard similarity over the 188 tags satisfies
+0.570 [0.546, 0.593] of the constraints, tying on 70\,\% of them out of
+sparsity, and ``same genre'' agrees with the vote 0.901 [0.822, 0.961] of the
+time, but only on the 101 constraints (12\,\%) where it separates the two
+candidates at all (Section \ref{sec:genre-proxy}). In the literature, a bag of
+audio words over MFCC with its first and second derivatives, not trained on
+the constraints, satisfies 63.6 to 64.6\,\% \cite{Karamanolakis2016}, and
+metrics learned on the constraints themselves, under cross-validation, reach
+69.5 to 75.6\,\% \cite{Wolff2012}. No representation in this work is trained
+on MagnaTagATune, so the first range is the comparable one; the second is an
+upper reference, not a target.
+
+\paragraph{Limitations.} Four of them bound what this evaluation can say.
+(1)~\emph{Bandwidth}: the audio is 16\,kHz mono MP3, so nothing above 8\,kHz
+reaches any representation, while FMA is decoded at 22\,050\,Hz; MagnaTagATune
+is resampled to 22\,050\,Hz so that one extractor serves both corpora, and to
+24\,kHz from there for \texttt{mert}. (2)~\emph{Duration}: the clips last
+about 29.1 seconds and are padded to 30, so the last window of every clip is
+partly silent. (3)~\emph{Domain}: the Magnatune catalogue leans towards
+classical, new age and electronic music, far from the eight genres of FMA, so
+agreement here measures transfer as much as similarity. (4)~\emph{Power}: 860
+constraints in 337 triplets give an interval of roughly $\pm 3$ to 5 points on
+each representation, and about $\pm 4$ on a paired difference. That separates
+a baseline from chance, and a baseline from a model ten points better, but not
+two variants a few points apart. The human ceiling is also well below 1: the
+most-voted clip takes on average 70.7\,\% of the votes of its row
+(Section \ref{sec:triplets}). Three of the 25\,863 clips are empty MP3 files in
+the published archive and cannot be extracted by any representation; none of
+them appears in a constraint.
 
 \section{Probing}
 \label{sec:probing-protocol}

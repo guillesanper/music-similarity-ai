@@ -8,9 +8,8 @@
 % sections must be clearly different from one another. Each student also
 % presents this material in English at the defence (VI.3).
 
-% Which of the two authors is Student 1 and which is Student 2 is still to be
-% agreed between them; the \todo below marks where the names go once that is
-% settled. The two profiles
+% Student 1 is Guillermo Sanchez Perez; the \todo in the second heading marks
+% where the other author's name goes. The two profiles
 % themselves come from the supervisor's assignment: Student 1 works on
 % representation learning and model evaluation, Student 2 on graph
 % construction, fuzzy techniques and results analysis.
@@ -18,7 +17,7 @@
 \chapter{Personal contributions}
 \label{cap:contributions}
 
-\section{\todo{Student 1 name} --- Representation learning and model evaluation}
+\section[Guillermo Sanchez Perez --- Representation learning and model evaluation]{Guillermo Sanchez Perez\ Representation learning and model evaluation}
 \label{sec:contribution-first}
 
 \todo{At least two pages. Write it in the first person and make it concrete.
@@ -45,6 +44,44 @@ validation only, never test); \texttt{configs/extractors/mert.yaml} and
 \texttt{fma\_test} through the same runner as \texttt{e01\_mfcc\_baseline};
 the measured per-track CPU extraction time; and checking the weights'
 licence (CC-BY-NC-4.0) before using them.}
+
+\subsection{The external evaluation on MagnaTagATune}
+
+I built the evaluation against human judgements end to end, from the download
+of the corpus to the results table. MagnaTagATune \cite{Law2009} ships as a
+three-part archive on a slow server and publishes no checksums, so
+\texttt{musicsim/\allowbreak datasets/\allowbreak mtt.py} downloads it, verifies it against the SHA-1
+values I recorded from the first download, and builds an index of the 25\,863
+clips in the same format as FMA's, with an extra \texttt{in\_triplets} column.
+The constraints come from \texttt{musicsim/\allowbreak datasets/\allowbreak mtt\_triplets.py}, which
+derives them from the raw odd-one-out votes as Wolff et al.\ do
+\cite{Wolff2012} and asserts each count of the chain in
+\texttt{configs/datasets/mtt.yaml} (533 rows, 7650 votes, 15\,300 edges, 1598
+unique, 860 constraints of margin 6898, 337 triplets, 993 clips). Reproducing
+the published figures exactly was the check that the derivation was right
+before any representation was scored.
+
+I wrote the agreement evaluator, \texttt{musicsim/\allowbreak evaluation/\allowbreak triplets.py}, and
+experiment \texttt{configs/\allowbreak experiments/\allowbreak e04\_human\_triplets.yaml}. Two problems
+had to be solved there. The first was that the constraints of one triplet are
+not independent, so the intervals had to be clustered by triplet, and the
+vote-weighted variant needed a clustered bootstrap with weights; I avoided a
+second bootstrap by repeating each constraint as many times as its margin,
+which is exact because margins are whole numbers. The second was scaling: MTT
+has no energy above 8\,kHz, so the scaler fitted on FMA would shift every
+vector. I added \texttt{embedding.fit\_on: all}, used only on MTT, where no
+label is evaluated, and documented why it must never be used on FMA.
+
+Running \texttt{mert} on all 25\,863 clips would have taken about 49 hours on
+my CPU (6.8\,s per clip), so I extracted its 13 layers on an NVIDIA GeForce
+RTX 2070 with 8\,GB of memory, in 54 minutes, and copied the cache over. Three
+clips failed with both extractors: they are empty MP3 files in the published
+archive, and none of them is in a constraint. The titular layer stayed the one
+chosen on FMA validation, because choosing it again on the constraints would
+have selected on the evaluation. The outcome, reported in Section
+\ref{sec:results-proxy}, is that \texttt{mfcc} reproduces the published MFCC
+figure and that \texttt{mert}'s lead over it, clear on genre, is small and not
+significant on human judgements.
 
 \section{\todo{Student 2 name} --- Graph construction, fuzzy techniques and results analysis}
 \label{sec:contribution-second}

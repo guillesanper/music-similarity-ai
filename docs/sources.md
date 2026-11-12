@@ -50,14 +50,18 @@ evaluation only.
 similarity judgements in the project.
 
 *Where it is used.* `musicsim/datasets/mtt.py`, `configs/datasets/mtt.yaml`,
-experiment `e04`, report sections 3.2 and 3.3.
+experiment `e04`, report sections 3.2, 3.3, 5.4 (the triplet protocol and its
+limitations) and 6.6 (the family B results).
 
 *Licence.* **None is published.** MARBLE lists MTT as not commercially
 available. Academic use is well established; the report says exactly this rather
 than claiming a licence that does not exist.
 
 *Caveats.* The audio is 16 kHz mono MP3, so it carries nothing above 8 kHz, and
-the catalogue leans towards classical, new age and electronic music.
+the catalogue leans towards classical, new age and electronic music. Three clips
+of the archive, `35644`, `55753` and `57881`, are MP3 files of 0 bytes: every
+extractor fails on them, so the feature caches hold 25 860 clips. None of them
+appears in a similarity constraint.
 
 ---
 
@@ -88,7 +92,8 @@ constraints of weight 6898, over 337 triplets and 993 clips**, and the accuracy
 of learned metrics, 69.5–75.6 %.
 
 *Where it is used.* `musicsim/datasets/mtt.py` asserts every one of those counts;
-`musicsim/evaluation/triplets.py`; experiment `e04`; report sections 3.3 and 5.4.
+`musicsim/evaluation/triplets.py`; experiment `e04`; report sections 3.3, 5.4 and
+6.6.
 
 ---
 
@@ -100,7 +105,9 @@ same constraints: a bag of audio words over MFCC + Δ + ΔΔ satisfies
 **63.6–64.6 %** of them, and fusing audio with tags reaches 73.1 %. This is the
 number the MFCC baseline of this project is read against.
 
-*Where it is used.* Report section 5.4, results table of experiment `e04`.
+*Where it is used.* Report section 5.4 (reference points) and section 6.6, where
+the MFCC baseline of experiment `e04` (0.656 [0.625, 0.689]) is read against
+it.
 
 ---
 
@@ -198,7 +205,9 @@ output plus the 12 transformer layers).
 
 *Where it is used.* `musicsim/extractors/mert.py`: 13 layers are pooled and
 cached per item, and the titular layer is the one with the highest Recall@10
-on FMA validation (`select_titular_layer`), never test.
+on FMA validation (`select_titular_layer`), never test. Experiment `e04` reuses
+that layer on MagnaTagATune without choosing it again (report sections 5.4 and
+6.6).
 
 *Licence `[verified]` against the model card.* CC-BY-NC-4.0 — non-commercial
 research use, which this thesis is. The weights are downloaded from Hugging
