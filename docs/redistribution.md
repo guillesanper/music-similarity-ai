@@ -3,11 +3,15 @@
 Extracting MERT for all of `fma_small` takes about 27 minutes on a GPU and
 about 9 hours on a CPU (see the MERT section of the [README](../README.md)).
 Publishing the cache as a download, rather than committing it, would spare
-anyone reproducing the results that cost. This document records what would be
-published, under which licences the inputs are, and the question that has to
-be answered before anything is published. **Nothing has been published yet.**
+anyone reproducing the results that cost. This document records what would
+have been published, under which licences the inputs are, the question that
+arose, and the decision taken.
 
-It is a record of the facts and of the open question, not a legal opinion.
+**Decision (12 November 2026, with the supervisor): nothing is published.**
+Neither the FMA cache nor the MagnaTagATune one, in the repository or as a
+separate download. Section 4 gives the reasons.
+
+It is a record of the facts and of the decision, not a legal opinion.
 
 ---
 
@@ -99,9 +103,9 @@ research purpose, with attribution to MERT, is the reading closest to the
 licence, so any release would state the non-commercial restriction and cite
 both MERT and FMA.
 
-## 4. Provisional conclusion and the open question
+## 4. Options considered and decision
 
-Three options:
+Three options were considered:
 
 1. **Publish everything** (7994 tracks). The download fully replaces the
    extraction. This relies on the arrays not being adaptations of the ND
@@ -115,16 +119,20 @@ Three options:
 3. **Publish nothing.** Anyone reproducing extracts MERT themselves. The
    cost is the time given in the README; the results do not change.
 
-**Provisional conclusion:** option 2 is the one that does not depend on the
-open question, and option 1 is the one that is useful. Either way the release
-is non-commercial and cites FMA and MERT. The choice is not ours to make alone.
+**Decision: option 3.** Publishing nothing does not depend on how the
+adaptation question is answered, and its cost is small: about half an hour of
+extraction on a GPU (27 minutes for `fma_small`, 54 minutes for the 25 863
+MagnaTagATune clips) or about 9 hours for `fma_small` on a CPU. That is not a
+barrier to reproducing the results large enough to justify entering a legal
+grey area. Option 2 would have avoided the doubtful tracks, but it still
+leaves the share-alike conditions to interpret, and it saves only part of the
+cost. Option 1 rests entirely on the
+open question.
 
-**Question for the tutor:** *the cache holds, per FMA track, 13 × 768 averaged
-MERT activations, with no audio and no weights. 2788 of the 7994 tracks are
-under no-derivatives licences (BY-ND or BY-NC-ND) and five have no licence
-recorded. Should we publish the cache for every track, for every track except
-those 2793, or not at all?*
+The same applies, more clearly, to the MagnaTagATune cache: the corpus
+publishes no licence at all (`Law2009` in [`sources.md`](sources.md)), so
+there would be no terms to rely on.
 
-The archive is ready but **will not be published until that answer arrives**.
-The README describes how to install it and gives a placeholder instead of a
-link.
+The archive `mert-layers-22171214-fma_small.tgz` that was packaged for the
+release is not published; the caches are moved between the authors' own
+machines only, as any other file under `outputs/`.
