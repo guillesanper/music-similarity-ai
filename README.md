@@ -36,9 +36,9 @@ in the report under [`report/`](report/), not in this file.
 > **Status.** The current milestone is the comparison of MERT against the MFCC
 > baseline. Both run end to end on FMA and on MagnaTagATune, and the results
 > are in [MERT](#mert) and [Human triplets on MagnaTagATune](#human-triplets-on-magnatagatune).
-> On FMA they are provisional until the paired comparison with Holm correction
-> is done. See [Status](#status) for what runs today and what each stage still
-> waits for.
+> MERT is significantly better than MFCC on genre retrieval, and only slightly
+> (not significantly) better on human judgements. See [Status](#status) for
+> what runs today and what each stage still waits for.
 
 ## Contents
 
@@ -286,11 +286,26 @@ bootstrap over artists), from the run of
 | `mfcc` | 0.035 [0.029, 0.040] | 0.240 [0.209, 0.271] | 0.364 [0.299, 0.419] |
 | `random` | 0.013 [0.012, 0.014] | 0.132 [0.130, 0.133] | 0.129 [0.120, 0.137] |
 
-These figures are **provisional**. The intervals belong to each representation
-separately: the paired difference between `mert` and `mfcc`, with the same
-resampled artists for both and Holm correction, is still pending. Relevance is
-`genre_top`, so the table measures similarity by genre labels only; the
-evaluation against human judgements is in
+The intervals above belong to each representation separately. The paired
+difference `mert` − `mfcc` on the same queries, with the same resampled
+artists for both (10 000 resamples, 202 artists) and Holm correction over the
+three metrics:
+
+| Metric | Δ [95 % CI] | p | p (Holm) |
+|---|---|---|---|
+| R@10 | +0.023 [0.019, 0.028] | 0.0002 | 0.0006 |
+| MAP | +0.121 [0.084, 0.153] | 0.0002 | 0.0006 |
+| nDCG@10 | +0.245 [0.198, 0.288] | 0.0002 | 0.0006 |
+
+All three are significant (0.0002 is the smallest p-value 10 000 resamples can
+give); on `fma_all` they keep the sign and stay significant. The Holm family is
+provisional until every representation of the report is in it. These
+differences come from `musicsim.evaluation.deltas.paired_deltas` applied to the
+run's `metrics/per_query.csv` (`fma_test`, `dedup`, seed 42); the runner does
+not write them on its own yet.
+
+Relevance is `genre_top`, so these tables measure similarity by genre labels
+only; the evaluation against human judgements is in
 [Human triplets on MagnaTagATune](#human-triplets-on-magnatagatune).
 `mfcc`'s nDCG@10 differs from the reference in
 [Running experiments](#running-experiments) in the third decimal because
@@ -314,8 +329,8 @@ the layer chosen on FMA validation; nothing is re-selected on the constraints.
 (63.6–64.6 %, Karamanolakis 2016) and beats chance: paired difference over
 `random` seed 0 +0.162 [0.111, 0.215], significant after Holm. `mert` is ahead
 of `mfcc` but **not significantly**: +0.023 [−0.016, 0.062], p = 0.258, the
-same after Holm. On genre (the table above) the gap is clear; on human
-judgements it is small. The Holm family is provisional (two pairs, 1000
+same after Holm. On genre (the tables above) the difference is significant on
+every headline metric; on human judgements it is small and not established. The Holm family is provisional (two pairs, 1000
 resamples). Seeds 1 and 2 of `random` also stay at chance; their intervals are
 in `metrics/triplets.csv` and in the report, section 6.6, which also discusses the limits of this
 evaluation (8 kHz bandwidth, domain, ±3–5 points of power).
@@ -375,8 +390,8 @@ acceptance criterion and adds its draft of the corresponding report section.
 | **S1 Baselines** | Audio, log-mel cache, `mfcc` and `random` extractors, embeddings | **done** |
 | **S1 Baselines** | kNN graph, near-duplicate detection, retrieval metrics (Recall@K, MAP, nDCG@10, P@10) over the `fma_test`/`fma_all` galleries, clustered bootstrap with Holm correction; e01, e02 | **done** |
 | **S1 Baselines** | `mert` extractor (13 layers) and titular layer selection on real FMA validation data | **done** |
-| **S1 Baselines** | e01 (MERT): full `fma_test`/`fma_all` comparison against `mfcc`/`random` | **done** — extracted on a GPU in 27 minutes; provisional results in [MERT](#mert) |
-| **S1 Baselines** | Paired MERT–MFCC difference with Holm correction | pending |
+| **S1 Baselines** | e01 (MERT): full `fma_test`/`fma_all` comparison against `mfcc`/`random` | **done** — extracted on a GPU in 27 minutes; results in [MERT](#mert) |
+| **S1 Baselines** | Paired MERT–MFCC difference with Holm correction | **done** — `musicsim/evaluation/deltas.py`; significant on R@10, MAP and nDCG@10 ([MERT](#mert)). Writing `retrieval_deltas.csv` from `musicsim run` is pending |
 | **S2 Graphs** | Structure and hubness of the kNN graph (`structure` evaluator, e03) | **in progress** — done: hubness, reciprocity, homophily, clustering, components, near-duplicate collapsing and writing the graphs to disk. Missing: communities (NMI against genre), subsampling confidence intervals, comparison between graphs, export, figures. Point estimates on `fma_test` (795 nodes after collapsing 5 near-duplicates, k = 10, no confidence intervals): k-occurrence skewness 2.37 for `mfcc` vs. 0.18–0.44 for three `random` seeds, label homophily 0.35 vs. 0.12–0.13, reciprocity 0.34 vs. 0.83 |
 | **S2 Graphs** | Graph variants and robustness, similarity measures, fuzzy graphs and memberships | pending |
 | **S2 Graphs** | MagnaTagATune ground truth and human-triplet evaluation | **done** — download and index of the 25 863 clips, the 860 constraints reproducing Wolff et al. 2012 exactly, agreement evaluator and e04 with `mert`, `mfcc` and `random`; results in [Human triplets on MagnaTagATune](#human-triplets-on-magnatagatune). Tag-based relevance on MTT is still pending |

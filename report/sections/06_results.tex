@@ -77,8 +77,13 @@ correlation (F4), and, if F2 is in scope, the fitted rule base.}
 % Every number below comes from two runs, recorded with their commit in
 % run.json: e01 (MERT) on fma_test, run 20261103-040002_7999db47 at commit
 % 63f2ae1, and e04 on MagnaTagATune, run 20261111-120139_17ee6e7d with the
-% configuration of commit 9a455f4. Both use 1000 bootstrap resamples; the final
-% tables are regenerated with 10 000 by `musicsim export`.
+% configuration of commit 9a455f4. Both use 1000 bootstrap resamples for the
+% per-representation intervals; the final tables are regenerated with 10 000
+% by `musicsim export`. The paired family A differences use 10 000 resamples:
+% musicsim.evaluation.deltas.paired_deltas (commit 0aa2bfc) applied to that
+% run's metrics/per_query.csv, fma_test, dedup, queries all, seed 42, with the
+% artist of every query from datasets/fma/index.csv. The runner does not write
+% them yet; until it does, that call is how they are reproduced.
 
 SQ4 asks whether the conclusions drawn with the genre proxy hold up against
 human judgements. The two families of ground truth measure different things,
@@ -114,12 +119,34 @@ models, which are, are reported the same way.
   \end{tabular}
 \end{table}
 
+\begin{table}[t]
+  \centering
+  \caption[Family A: paired differences between MERT and MFCC]{Family A,
+    paired differences $\texttt{mert} - \texttt{mfcc}$ on \texttt{fma\_test}
+    (800 queries by 202 artists), with the same resampled artists for both
+    representations: 95\,\% percentile interval and bootstrap $p$-value from
+    10\,000 resamples. Holm's correction runs over the three headline metrics
+    and is provisional. The smallest attainable $p$ is 0.0002.}
+  \label{tab:proxy-family-a-deltas}
+  \begin{tabular}{@{}llll@{}}
+    \toprule
+    Metric & $\Delta$ [95\,\% CI] & $p$ & $p_{\text{Holm}}$ \\
+    \midrule
+    R@10    & $+0.023$ [$0.019$, $0.028$] & 0.0002 & 0.0006 \\
+    MAP     & $+0.121$ [$0.084$, $0.153$] & 0.0002 & 0.0006 \\
+    nDCG@10 & $+0.245$ [$0.198$, $0.288$] & 0.0002 & 0.0006 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
 On genre, \texttt{mert} is ahead of \texttt{mfcc} on all three headline
-metrics, and the intervals of the two do not overlap on any of them
-(Table \ref{tab:proxy-family-a}). The intervals are per representation,
-though: the paired difference over the same resampled artists, with Holm's
-correction, is still to be computed, and until then the gap is a strong
-indication rather than a tested result.
+metrics (Table \ref{tab:proxy-family-a}), and the paired differences confirm
+it (Table \ref{tab:proxy-family-a-deltas}): every interval lies well above
+zero, and every difference survives Holm's correction with the smallest
+$p$-value the resampling can produce. Resampling by artist makes the test
+conservative, since 800 queries count as 202 independent units. On the whole
+corpus (\texttt{fma\_all}), the secondary gallery, the three differences have
+the same sign and are also significant.
 
 \subsection{Family B: perceived similarity (human triplets)}
 \label{sec:results-proxy-human}
@@ -202,11 +229,13 @@ settle on which side of it it falls.
 needs the representations of e08; with \texttt{mert}, \texttt{mfcc} and
 \texttt{random} alone it is descriptive at best, and is not reported.}
 The order is the same in both families: \texttt{mert}, then \texttt{mfcc},
-then \texttt{random}. What does not transfer is the size of the gap. On genre,
-\texttt{mert} reaches a Recall@10 of 0.059 [0.049, 0.066] against 0.035
-[0.029, 0.040] for \texttt{mfcc}, intervals that do not overlap; on human
-judgements the paired difference is $+0.023$ [$-0.016$, $0.062$] and its
-interval contains zero. Two readings fit these numbers and this evaluation cannot tell
+then \texttt{random}. What does not transfer is the strength of the evidence.
+On genre, the paired difference between \texttt{mert} and \texttt{mfcc} is
+significant on every headline metric, for instance $+0.245$ [0.198, 0.288] in
+nDCG@10; on human judgements it is $+0.023$ [$-0.016$, $0.062$] and its
+interval contains zero. The two differences are on different scales and are
+not compared in size; what differs is that one is established and the other
+is not. Two readings fit these numbers and this evaluation cannot tell
 them apart. Either part of MERT's advantage on FMA is an advantage on the
 genre proxy specifically, which is what SQ4 asks; or MagnaTagATune hides an
 advantage that is there, through its power (about $\pm 4$ points on a paired
