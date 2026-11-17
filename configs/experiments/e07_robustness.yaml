@@ -1,0 +1,46 @@
+# E07 - Do a clip's neighbours change when its audio is degraded?
+# Gallery: the original clips of fma_test. Query: the perturbed clip, with its
+# original (and near-duplicates) excluded. Per condition: Jaccard@10 against the
+# original neighbourhood, deltas of R@10 / MAP / nDCG@10, and the rank of the
+# original in the ranking of its perturbed version. The null condition is always
+# run and must give Jaccard@10 = 1 and deltas of exactly 0. `random` ignores the
+# audio, so it must give Jaccard@10 = 1 everywhere: a control of the pipeline,
+# not a robustness figure. Family A (genre proxy). Report: section 06_results,
+# "Sensitivity".
+
+defaults:
+  - ../base.yaml
+  - ../datasets/fma_small.yaml
+  - ../extractors/mfcc.yaml
+
+experiment: e07_robustness
+
+# The perturbed vectors are extracted and embedded by the evaluator itself.
+stages: [evaluate]
+
+representations:
+  - mfcc
+  - random
+  # mert is run on three conditions only (about 11 h of CPU for all 13) unless
+  # a GPU is available. Needs the full MERT extraction first; uncomment together
+  # with its `conditions` entry below.
+  # - mert
+
+evaluation:
+  retrieval:
+    enabled: false
+  robustness:
+    enabled: true
+    galleries: [fma_test]
+    # Near-duplicates are detected on this representation.
+    reference: mfcc
+    conditions:
+      default: all            # the 13 conditions of musicsim.audio_perturbations
+      # mert:
+      #   - {noise_snr_db: 20}
+      #   - {pitch_semitones: 1}
+      #   - {tempo_ratio: 1.1}
+
+outputs:
+  metrics: [robustness.csv, robustness_per_query.csv]
+  figures: []

@@ -57,3 +57,10 @@ def test_random_extractor_rejects_an_unknown_distribution() -> None:
     )
     with pytest.raises(ValueError, match="distribution"):
         RandomExtractor(config).extract_one(1, "a")
+
+
+def test_random_extractor_from_waveform_ignores_the_audio() -> None:
+    extractor = RandomExtractor(_config())
+    assert np.array_equal(
+        extractor.extract_from_waveform(5, np.zeros(10, np.float32)), extractor.extract_one(5, "a")
+    )

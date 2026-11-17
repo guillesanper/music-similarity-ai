@@ -24,8 +24,17 @@ class MfccExtractor(Extractor):
     """20 MFCCs (c0 dropped) + their deltas, pooled to mean/std -> 80 dims."""
 
     def extract_one(self, item_id: int, path: str) -> np.ndarray:
-        S = audio.load_or_compute_melspec(path, item_id, self.config)
+        return self._pool(audio.load_or_compute_melspec(path, item_id, self.config))
 
+    def extract_from_waveform(self, item_id: int, y: np.ndarray) -> np.ndarray:
+        """Same vector from a decoded waveform; the spectrogram is computed, never cached.
+
+        The cache is keyed by ``item_id``, so a perturbed clip would be mixed up
+        with its original.
+        """
+        return self._pool(audio.log_mel_spectrogram(y, self.config))
+
+    def _pool(self, S: np.ndarray) -> np.ndarray:
         n_mfcc = int(self.config.require("extractor.n_mfcc"))
         drop_c0 = bool(self.config.get("extractor.drop_c0", True))
         delta_width = int(self.config.require("extractor.delta_width"))
