@@ -20,6 +20,7 @@ use it, because that is simpler and never reuses a cache wrongly.
 
 from __future__ import annotations
 
+import dataclasses
 from pathlib import Path
 
 import numpy as np
@@ -32,9 +33,11 @@ from musicsim.config import Config, ConfigError, config_hash
 
 __all__ = [
     "EmbeddingError",
+    "EmbeddingTransform",
     "build_embeddings",
     "embeddings_cache_dir",
     "features_cache_dir",
+    "fit_embedding",
     "load_embeddings",
 ]
 
@@ -75,10 +78,51 @@ def _section_hash(config: Config, sections: tuple[str, ...]) -> str:
     return config_hash({name: resolved.get(name, {}) for name in sections})
 
 
-def build_embeddings(
+@dataclasses.dataclass(frozen=True)
+class EmbeddingTransform:
+    """The fitted standardize -> PCA -> L2 steps, applicable to any feature matrix.
+
+    Produced by :func:`fit_embedding`. Holding the fitted scaler and PCA is what
+    lets vectors that were not in the fit (a perturbed clip, say) go through
+    exactly the parameters learned on the fit split, instead of refitting them.
+    """
+
+    scaler: StandardScaler | None
+    pca: PCA | None
+    l2_normalize: bool
+
+    def transform(self, X: np.ndarray) -> np.ndarray:
+        """``(n, d)`` float32 embeddings of ``X``, with the checks of the original pipeline."""
+        Z = X.astype(np.float64)
+        if self.scaler is not None:
+            Z = self.scaler.transform(Z)
+        if self.pca is not None:
+            Z = self.pca.transform(Z)
+
+        if self.l2_normalize:
+            norms = np.linalg.norm(Z, axis=1, keepdims=True)
+            if (norms == 0).any():
+                raise EmbeddingError(
+                    f"{int((norms == 0).sum())} row(s) have zero norm; cannot L2-normalise"
+                )
+            Z = Z / norms
+
+        Z = Z.astype(np.float32)
+        if self.l2_normalize:
+            final_norms = np.linalg.norm(Z.astype(np.float64), axis=1)
+            max_err = float(np.abs(final_norms - 1).max())
+            if max_err > _NORM_TOL or not np.isfinite(Z).all():
+                raise EmbeddingError(
+                    f"L2 norms out of tolerance ({_NORM_TOL}) after casting to float32 "
+                    f"(max |norm - 1| = {max_err:.2e}), or non-finite values"
+                )
+        return Z
+
+
+def fit_embedding(
     X: np.ndarray, ids: np.ndarray, index: pd.DataFrame, config: Config
-) -> tuple[np.ndarray, dict]:
-    """Return ``(Z, info)``, ``Z`` aligned row-for-row with ``X`` / ``ids``.
+) -> tuple[EmbeddingTransform, dict]:
+    """Fit the scaler and the PCA on the ``embedding.fit_on`` split; return the transform.
 
     ``info`` carries ``n_fit`` (items the scaler/PCA were fit on) and
     ``explained_variance_ratio`` (``None`` unless PCA is enabled).
@@ -103,10 +147,12 @@ def build_embeddings(
     Z = X.astype(np.float64)
     info: dict = {"n_fit": int(fit_mask.sum()), "explained_variance_ratio": None}
 
+    scaler = None
     if config.get("embedding.standardize", True):
         scaler = StandardScaler().fit(Z[fit_mask])
         Z = scaler.transform(Z)
 
+    pca = None
     if config.get("embedding.pca.enabled", False):
         n_components = config.get("embedding.pca.n_components")
         if not n_components:
@@ -119,28 +165,24 @@ def build_embeddings(
             )
         random_state = seeding.derive_seed(config.require("seed"), "embedding", "pca")
         pca = PCA(n_components=n_components, random_state=random_state).fit(Z[fit_mask])
-        Z = pca.transform(Z)
         info["explained_variance_ratio"] = pca.explained_variance_ratio_
 
-    if config.get("embedding.l2_normalize", True):
-        norms = np.linalg.norm(Z, axis=1, keepdims=True)
-        if (norms == 0).any():
-            raise EmbeddingError(
-                f"{int((norms == 0).sum())} row(s) have zero norm; cannot L2-normalise"
-            )
-        Z = Z / norms
+    transform = EmbeddingTransform(
+        scaler=scaler, pca=pca, l2_normalize=bool(config.get("embedding.l2_normalize", True))
+    )
+    return transform, info
 
-    Z = Z.astype(np.float32)
-    if config.get("embedding.l2_normalize", True):
-        final_norms = np.linalg.norm(Z.astype(np.float64), axis=1)
-        max_err = float(np.abs(final_norms - 1).max())
-        if max_err > _NORM_TOL or not np.isfinite(Z).all():
-            raise EmbeddingError(
-                f"L2 norms out of tolerance ({_NORM_TOL}) after casting to float32 "
-                f"(max |norm - 1| = {max_err:.2e}), or non-finite values"
-            )
 
-    return Z, info
+def build_embeddings(
+    X: np.ndarray, ids: np.ndarray, index: pd.DataFrame, config: Config
+) -> tuple[np.ndarray, dict]:
+    """Return ``(Z, info)``, ``Z`` aligned row-for-row with ``X`` / ``ids``.
+
+    Fits with :func:`fit_embedding` and transforms ``X`` with the result;
+    ``info`` is the one :func:`fit_embedding` returns.
+    """
+    transform, info = fit_embedding(X, ids, index, config)
+    return transform.transform(X), info
 
 
 def load_embeddings(config: Config) -> tuple[np.ndarray, np.ndarray]:

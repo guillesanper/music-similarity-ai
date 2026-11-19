@@ -10,9 +10,11 @@ from sklearn.preprocessing import StandardScaler
 from musicsim.config import Config
 from musicsim.embeddings import (
     EmbeddingError,
+    EmbeddingTransform,
     build_embeddings,
     embeddings_cache_dir,
     features_cache_dir,
+    fit_embedding,
 )
 
 
@@ -166,3 +168,48 @@ def test_the_embedding_section_changes_only_the_embeddings_directory() -> None:
     other = _full_config(embedding={"standardize": False})
     assert features_cache_dir(base) == features_cache_dir(other)
     assert embeddings_cache_dir(base) != embeddings_cache_dir(other)
+
+
+@pytest.mark.parametrize(
+    "overrides",
+    [
+        {},
+        {"pca": {"enabled": True, "n_components": 2}},
+        {"standardize": False},
+        {"l2_normalize": False, "pca": {"enabled": True, "n_components": 3}},
+    ],
+)
+def test_fit_then_transform_equals_build_embeddings(overrides: dict) -> None:
+    config = _config(**overrides)
+    transform, info = fit_embedding(_features(), _ids(), _index(), config)
+    Z, build_info = build_embeddings(_features(), _ids(), _index(), config)
+
+    assert isinstance(transform, EmbeddingTransform)
+    assert np.array_equal(transform.transform(_features()), Z)
+    assert info["n_fit"] == build_info["n_fit"]
+
+
+def test_transforming_a_subset_of_rows_gives_the_same_rows() -> None:
+    transform, _ = fit_embedding(
+        _features(), _ids(), _index(), _config(pca={"enabled": True, "n_components": 2})
+    )
+    full = transform.transform(_features())
+    assert np.array_equal(transform.transform(_features()[[4, 1, 5]]), full[[4, 1, 5]])
+
+
+def test_new_vectors_go_through_the_parameters_fitted_on_the_fit_split() -> None:
+    """Transforming never refits: an outlier changes only its own row."""
+    X = _features()
+    transform, _ = fit_embedding(X, _ids(), _index(), _config())
+    outlier = X[:1] + 100.0
+    expected = StandardScaler().fit(X[:4].astype(np.float64)).transform(outlier.astype(np.float64))
+    expected = (expected / np.linalg.norm(expected, axis=1, keepdims=True)).astype(np.float32)
+    assert np.allclose(transform.transform(outlier), expected, atol=1e-6)
+    assert np.array_equal(transform.transform(X[1:2]), transform.transform(X)[1:2])
+
+
+def test_a_zero_norm_row_raises_at_transform_time() -> None:
+    config = _config(standardize=False)
+    transform, _ = fit_embedding(_features(), _ids(), _index(), config)
+    with pytest.raises(EmbeddingError, match="zero norm"):
+        transform.transform(np.zeros((1, 4), np.float32))
