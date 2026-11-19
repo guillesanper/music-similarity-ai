@@ -371,6 +371,37 @@ graphs they induce (SQ3, the noise-floor and dose-response analysis).
 `musicsim/evaluation/link.py` (stage S4), report sections 2 and 6
 (representation gap and graph gap).
 
+### `Roy2007` — The Effective Rank: A Measure of Effective Dimensionality `[to read]`
+
+Olivier Roy and Martin Vetterli. 15th European Signal Processing Conference
+(EUSIPCO), 2007 (cited from memory of the standard reference; venue and pages
+need a primary-source check).
+
+*What it gives.* The effective rank of a matrix: the exponential of the Shannon
+entropy of its singular values normalised to sum to one. It is `d` for the
+`d x d` identity and `1` for a rank-one matrix.
+
+*Where it is used.* `musicsim/evaluation/representation.py`, as one of the two
+collapse checks on the learned embeddings (report section 4.6).
+
+*Open item.* Not yet in `report/bibliography.bib`; add it when it is promoted
+to `[verified]`.
+
+### `Ethayarajh2019` — How Contextual are Contextualized Word Representations? `[to read]`
+
+Kawin Ethayarajh. EMNLP-IJCNLP 2019 (cited from memory of the standard
+reference; venue and pages need a primary-source check).
+
+*What it gives.* Anisotropy measured as the expected cosine similarity between
+the representations of two random items: near `1` when every vector points the
+same way.
+
+*Where it is used.* `musicsim/evaluation/representation.py` (`mean_cosine`), the
+other collapse check on the learned embeddings (report section 4.6).
+
+*Open item.* Not yet in `report/bibliography.bib`; add it when it is promoted
+to `[verified]`.
+
 ---
 
 ## Graph structure
