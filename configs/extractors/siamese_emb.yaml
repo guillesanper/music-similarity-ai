@@ -1,0 +1,41 @@
+# Siamese head over MERT: a small MLP trained with the cosine contrastive loss
+# (Hadsell et al. 2006) on top of the cached MERT titular layer, so that two
+# tracks of the same genre by different artists end up close and two tracks of
+# different genres far apart (musicsim.extractors.vector_siamese).
+#
+# The head is trained the first time this extractor runs for a given
+# configuration and seed, on FMA's training split, with early stopping on
+# Recall@10 over the validation split; later runs load it from
+# outputs/checkpoints/siamese_emb-<hash8>/. Every key below enters that hash
+# and the feature cache's, so changing any of them trains a new head.
+#
+# A short CPU check of the whole path:
+#   python -m musicsim extract --config <experiment using this extractor> \
+#       -o extractor.training.max_epochs=2
+
+extractor:
+  name: siamese_emb
+  # Input: the cached vectors of another extractor, standardised with the
+  # statistics of the training split. The overrides pin the settings the head
+  # is designed for: MERT's titular layer, chosen once on validation.
+  input:
+    extractor: mert
+    overrides:
+      mert_layer: 6
+  hidden: [512]                # 768 -> 512 -> 128
+  dropout: 0.2                 # after the hidden layer
+  dim: 128                     # embedding size, unit L2 norm
+
+  training:
+    # Contrastive loss on the cosine distance (in [0, 2]): negatives are pushed
+    # apart only while closer than the margin. Starting value, to be selected
+    # on validation Recall@10 together with the learning rate.
+    margin: 0.5
+    lr: 1.0e-3                 # Adam
+    weight_decay: 1.0e-4       # Adam's L2 penalty
+    # PxK batches: 8 genres x 8 tracks, each genre block by at least two
+    # artists. FMA small has exactly 8 genres, so every batch holds all of them.
+    p: 8
+    k: 8
+    max_epochs: 200
+    patience: 10               # epochs without a strict improvement of validation Recall@10
