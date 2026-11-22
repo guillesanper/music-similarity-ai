@@ -135,19 +135,6 @@ class MertExtractor(Extractor):
     def extract_one(self, item_id: int, path: str) -> np.ndarray:
         return self._titular(load_or_compute_mert_layers(self, item_id, path))
 
-    def extract_from_waveform(self, item_id: int, y: np.ndarray) -> np.ndarray:
-        """Titular-layer vector of a decoded waveform; the layer cache is not used.
-
-        The cache is keyed by ``item_id``, so a perturbed clip would be mixed up
-        with its original.
-        """
-        windows = self._windows_from_waveform(y)
-        return self._titular(self._forward_chunked(windows).mean(axis=0).astype(np.float16))
-
-    def extract_perturbed(self, index, conditions, *, n_jobs: int = -1, progress: bool = True):
-        """Single-process for the reasons given in :meth:`extract_all`; not batched on a GPU."""
-        return super().extract_perturbed(index, conditions, n_jobs=1, progress=progress)
-
     def _titular(self, layers: np.ndarray) -> np.ndarray:
         layer = int(self.config.require("extractor.mert_layer"))
         n_layers = layers.shape[0]
@@ -233,13 +220,10 @@ class MertExtractor(Extractor):
         model's sampling rate: non-overlapping ``window_seconds`` windows, the
         trailing remainder dropped. Pure CPU/IO work, safe to run on threads.
         """
-        return self._windows_from_waveform(audio.load_clip(path, self.config))
-
-    def _windows_from_waveform(self, y: np.ndarray) -> np.ndarray:
-        """:meth:`_load_windows` from an already decoded clip at ``audio.sample_rate``."""
         import librosa
 
         _, target_sr = self._model_and_target_sr()
+        y = audio.load_clip(path, self.config)
         pipeline_sr = int(self.config.require("audio.sample_rate"))
         if pipeline_sr != target_sr:
             y = librosa.resample(y, orig_sr=pipeline_sr, target_sr=target_sr)

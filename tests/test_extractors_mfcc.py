@@ -127,16 +127,3 @@ def test_mfcc_matches_the_archived_repository_reference() -> None:
     assert np.array_equal(ids[new_order], old_ids[old_order])
 
     np.testing.assert_allclose(X[new_order], old_X[old_order], rtol=1e-3, atol=1e-3)
-
-
-def test_mfcc_from_waveform_equals_extract_one(
-    tmp_path: Path, isolated_roots: dict[str, Path]
-) -> None:
-    path = tmp_path / "clip.wav"
-    _write_wav(path, seconds=1.0, sr=8000)
-    config = _config(runtime={"cache": False})
-    extractor = MfccExtractor(config)
-
-    from_waveform = extractor.extract_from_waveform(1, audio.load_clip(path, config))
-
-    np.testing.assert_array_equal(from_waveform, extractor.extract_one(1, str(path)))

@@ -797,15 +797,3 @@ def test_real_mert_on_gpu_agrees_with_the_cpu_per_layer() -> None:
 
     cosine = (cpu * gpu).sum(-1) / (np.linalg.norm(cpu, axis=-1) * np.linalg.norm(gpu, axis=-1))
     assert cosine.min() >= 0.9999
-
-
-def test_extract_from_waveform_matches_the_titular_layer_of_its_windows(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    _, windows = _tracks([4])
-    rig = _Rig(monkeypatch, windows, device="cpu")
-    monkeypatch.setattr(rig.extractor, "_windows_from_waveform", lambda y: windows["t0.mp3"])
-
-    vector = rig.extractor.extract_from_waveform(100, np.zeros(8, np.float32))
-
-    np.testing.assert_array_equal(vector, _expected_titular(windows["t0.mp3"]))

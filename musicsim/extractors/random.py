@@ -23,13 +23,6 @@ class RandomExtractor(Extractor):
     """Draws each item's vector from ``N(0, 1)``, seeded by run seed + item id."""
 
     def extract_one(self, item_id: int, path: str) -> np.ndarray:
-        return self._draw(item_id)
-
-    def extract_from_waveform(self, item_id: int, y: np.ndarray) -> np.ndarray:
-        """The waveform is ignored, like the path: the vector depends on the seed and the id."""
-        return self._draw(item_id)
-
-    def _draw(self, item_id: int) -> np.ndarray:
         distribution = self.config.get("extractor.distribution", "normal")
         if distribution != "normal":
             raise ValueError(f"unknown extractor.distribution {distribution!r}")
