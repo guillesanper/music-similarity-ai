@@ -47,3 +47,15 @@ dataset:
 # 8 kHz (docs/ground-truth-study.md section 4.1).
 embedding:
   fit_on: all
+
+# Grouped cross-validation over the 860 constraints, for the models trained on
+# the human judgements (musicsim/datasets/mtt_folds.py): whole connected
+# components of clips go to one fold, balanced by number of constraints. A
+# section of its own, outside `dataset`, so that it stays out of the hash of the
+# feature and embedding caches.
+folds:
+  n_folds: 10          # as Wolff et al. (2012)
+  # Balance criterion, fixed before any result: no fold more than 10 % away from
+  # the mean size (860 / n_folds). A split that misses it is an error that asks
+  # for fewer folds; n_folds is never lowered silently.
+  max_imbalance: 0.1
