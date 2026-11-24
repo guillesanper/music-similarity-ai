@@ -174,7 +174,7 @@ def collapse_diagnostics(embeddings: np.ndarray) -> dict[str, Any]:
 class VectorContrastiveTask:
     """Contrastive training of a head on fixed vectors.
 
-    It is the :class:`~musicsim.training.train.TrainingTask` of this extractor.
+    It is the :class:`~musicsim.training.train.EmbeddingTask` of this extractor.
     ``features``, ``labels`` and ``artists`` are aligned per training item;
     ``validation_features`` are the validation items, in the order of the
     :class:`~musicsim.training.train.ValidationSet`.
@@ -409,7 +409,7 @@ class VectorSiameseExtractor(Extractor):
         summary = {
             "n_parameters": count_parameters(model),
             "best_epoch": result.best_epoch,
-            "best_recall_at_10": result.best_recall,
+            "best_recall_at_10": result.best_score,
             "epochs": result.epochs,
             "stopped_early": result.stopped_early,
             "n_training_items": len(train_rows),
@@ -423,7 +423,7 @@ class VectorSiameseExtractor(Extractor):
         logger.info(
             "%s: best validation R@10 %.4f at epoch %d of %d",
             self.name,
-            result.best_recall,
+            result.best_score,
             result.best_epoch,
             result.epochs,
         )

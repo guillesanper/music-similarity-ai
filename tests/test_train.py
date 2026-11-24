@@ -145,7 +145,7 @@ def test_overfits_64_synthetic_tracks(task, validation, tmp_path):
     assert curve["train_loss"].iloc[-1] < OVERFIT_LOSS
     assert result.epochs == 100
     assert not result.stopped_early
-    assert result.best_recall == curve["val_recall_at_10"].max()
+    assert result.best_score == curve["val_recall_at_10"].max()
     assert result.best_epoch == curve["val_recall_at_10"].idxmax() + 1
 
 
@@ -166,7 +166,7 @@ def test_early_stopping_after_patience_epochs_without_improvement(
     assert result.stopped_early
     assert result.best_epoch == 1
     assert result.epochs == 1 + PATIENCE
-    assert result.best_recall == FLAT_RECALL
+    assert result.best_score == FLAT_RECALL
     curve = _curve(tmp_path)
     assert len(curve) == 1 + PATIENCE
     assert (curve["val_recall_at_10"] == FLAT_RECALL).all()
@@ -351,3 +351,80 @@ def test_rejects_a_bad_validation_embedding(task_class, message, features, valid
         train(
             _model(), task_class(features, features), validation, _settings(1), tmp_path, seed=SEED
         )
+
+
+# --- pluggable validators ------------------------------------------------------------
+class _ScriptedValidator:
+    """Scores taken in turn from a fixed script, whatever the network does."""
+
+    columns = ("criterion", "recorded")
+
+    def __init__(self, criterion: list[float]) -> None:
+        self.criterion = criterion
+        self.calls = 0
+
+    def score(self, model, task):
+        value = self.criterion[self.calls]
+        self.calls += 1
+        return {"criterion": value, "recorded": -value}
+
+
+def test_validator_columns_go_to_the_curve_and_the_first_one_decides(task, tmp_path):
+    # Epoch 4 equals the best of epoch 2 without beating it: with patience 2 the
+    # run stops there and keeps epoch 2.
+    validator = _ScriptedValidator([0.1, 0.3, 0.2, 0.3, 0.9])
+
+    result = train(_model(), task, validator, _settings(10, patience=2), tmp_path, seed=SEED)
+
+    assert (result.best_epoch, result.best_score, result.epochs) == (2, 0.3, 4)
+    assert result.stopped_early
+    curve = _curve(tmp_path)
+    assert list(curve.columns) == ["epoch", "train_loss", "criterion", "recorded"]
+    assert curve["criterion"].tolist() == [0.1, 0.3, 0.2, 0.3]
+    assert curve["recorded"].tolist() == [-0.1, -0.3, -0.2, -0.3]
+
+
+def test_resume_refuses_another_validator(task, validation, tmp_path):
+    train(_model(), task, validation, _settings(1), tmp_path, seed=SEED)
+    with pytest.raises(ValueError, match="cannot resume"):
+        train(
+            _model(),
+            task,
+            _ScriptedValidator([0.5]),
+            _settings(2),
+            tmp_path,
+            seed=SEED,
+            resume=True,
+        )
+
+
+@pytest.mark.parametrize(
+    ("columns", "message"),
+    [((), "at least one column"), (("a", "a"), "all distinct"), (("a", "train_loss"), "clash")],
+)
+def test_rejects_invalid_validator_columns(columns, message, task, tmp_path):
+    class _Columns(_ScriptedValidator):
+        pass
+
+    _Columns.columns = columns
+    with pytest.raises(ValueError, match=message):
+        train(_model(), task, _Columns([0.5]), _settings(1), tmp_path, seed=SEED)
+
+
+class _MissingScore(_ScriptedValidator):
+    def score(self, model, task):
+        return {"criterion": 0.5}
+
+
+class _NanScore(_ScriptedValidator):
+    def score(self, model, task):
+        return {"criterion": float("nan"), "recorded": 0.0}
+
+
+@pytest.mark.parametrize(
+    ("validator_class", "message"),
+    [(_MissingScore, "exactly its columns"), (_NanScore, "non-finite")],
+)
+def test_rejects_a_bad_validator_score(validator_class, message, task, tmp_path):
+    with pytest.raises(ValueError, match=message):
+        train(_model(), task, validator_class([0.5]), _settings(1), tmp_path, seed=SEED)
