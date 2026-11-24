@@ -1,0 +1,46 @@
+# Siamese head over MERT trained on MagnaTagATune's human similarity
+# constraints (Wolff et al. 2012) with the cosine triplet loss, unweighted
+# (musicsim.extractors.human_siamese, musicsim.training.constraints).
+#
+# On MTT it yields the out-of-fold vectors of the 993 constrained clips: each
+# clip is embedded by the model of the fold that held it out. On any other
+# corpus (FMA) it yields the vectors of a final model trained on every
+# constraint, which must never be evaluated on the constraints themselves.
+# Models live in outputs/checkpoints/human_siamese-<hash8>/; every key below
+# enters that hash and the feature cache's, so changing any of them trains anew.
+#
+# The linear variant (768 -> 128, the reference of Wolff et al.) is the same
+# extractor with the override `extractor.hidden: []`. Its output is unit-norm
+# already: experiments evaluate it with `embedding.standardize: false`.
+
+extractor:
+  name: human_siamese
+  # Input: the cached vectors of another extractor. MTT's clips are standardised
+  # with the statistics of every MTT clip, another corpus with its training split.
+  input:
+    extractor: mert
+    overrides:
+      mert_layer: 6            # the titular layer, chosen once on FMA validation
+  hidden: [512]                # 768 -> 512 -> 128, the head of siamese_emb
+  dropout: 0.2                 # after the hidden layer
+  dim: 128                     # embedding size, unit L2 norm
+
+  # Must repeat the `folds` section of configs/datasets/mtt.yaml (checked): the
+  # copy is what puts the folds into this extractor's cache keys.
+  folds:
+    n_folds: 10
+    max_imbalance: 0.1
+
+  training:
+    # Nested selection inside the training side of every fold, fixed before any
+    # result: one inner fold (by components) for early stopping and for the grid
+    # below, all 12 combinations in this order (margin slowest); ties go to the
+    # first. The margin is on the cosine distance, in (0, 2]. Adam.
+    grid:
+      margin: [0.1, 0.2, 0.4]
+      lr: [1.0e-3, 1.0e-4]
+      weight_decay: [1.0e-4, 1.0e-2]
+    inner_folds: 9             # about 86 of the 774 training constraints of a fold each
+    batch_size: 64             # constraints per batch
+    max_epochs: 200
+    patience: 10               # epochs without a strict improvement of the inner agreement
