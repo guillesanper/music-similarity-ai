@@ -27,6 +27,19 @@ validation or test items must not shape what the network sees. A constant
 dimension keeps a scale of one, the convention of scikit-learn's
 ``StandardScaler``.
 
+**Training corpus and other corpora.** The head always learns on the corpus of
+:data:`TRAINING_CORPUS` (FMA small, the only one with genre labels). On any other
+corpus (MagnaTagATune, for the human similarity constraints) it is only applied:
+the configuration it is trained under is this one with its ``dataset`` section
+replaced by that of :data:`TRAINING_CORPUS` (:meth:`VectorSiameseExtractor.training_config`),
+so the checkpoint is the same whichever corpus asks for it, and a head trained
+from an FMA run is reused, never trained again on the other corpus. The other
+corpus is standardised with its own statistics, on the rows its
+``embedding.fit_on`` names (every clip for MTT, ``fit_on: all``), as every other
+representation of it is: MTT has nothing above 8 kHz, and FMA's statistics would
+shift all its vectors the same way. Each corpus on its own statistics is our
+choice, fixed before any result and shared with ``human_siamese``.
+
 **Training.** Positives are same-genre pairs by different artists and negatives
 different-genre pairs, drawn as balanced pairs from PxK batches
 (:mod:`musicsim.training.data`); the loss is the cosine contrastive loss with
@@ -41,9 +54,10 @@ threshold the layer selection also uses
 **Checkpoints.** A trained head lives in
 ``paths.checkpoints_dir("<name>-<hash8>")``, the hash covering this extractor's
 whole section (architecture, training settings, input and its overrides), the
-run seed and the name of the input's feature cache directory, which itself hashes
-the dataset, audio and input settings. Next to the files of the training loop it
-holds ``config.resolved.yaml`` (the configuration the head was trained with) and
+run seed and the name of the training corpus's input feature cache directory,
+which itself hashes the dataset, audio and input settings. Next to the files of
+the training loop it holds ``config.resolved.yaml`` (the configuration of the run
+that trained the head, its ``dataset`` the training corpus's) and
 :data:`TRAINING_SUMMARY`, written last: its presence means the training finished,
 and a later extraction only loads :data:`~musicsim.training.train.BEST_CHECKPOINT`.
 A directory with :data:`~musicsim.training.train.LAST_CHECKPOINT` but no summary
@@ -73,7 +87,7 @@ import numpy as np
 import pandas as pd
 
 from musicsim import paths
-from musicsim.config import Config, config_hash
+from musicsim.config import Config, compose, config_hash
 from musicsim.evaluation.representation import effective_rank, mean_cosine
 from musicsim.extractors.base import Extractor
 from musicsim.graphs.duplicates import NEAR_DUP_SIM, duplicate_groups, near_duplicate_pairs
@@ -90,6 +104,7 @@ __all__ = [
     "MAX_MEAN_COSINE",
     "MIN_EFFECTIVE_RANK",
     "RESOLVED_CONFIG",
+    "TRAINING_CORPUS",
     "TRAINING_SUMMARY",
     "VectorContrastiveTask",
     "VectorSiameseExtractor",
@@ -104,6 +119,9 @@ TRAINING_SUMMARY = "training.json"
 
 #: The configuration the head was trained with, next to its checkpoints.
 RESOLVED_CONFIG = "config.resolved.yaml"
+
+#: The corpus configuration the head is trained under, whatever corpus it is applied to.
+TRAINING_CORPUS = paths.REPO_ROOT / "configs" / "datasets" / "fma_small.yaml"
 
 #: An embedding whose effective rank is at most this is reported as collapsed
 #: (this project's choice).
@@ -123,6 +141,11 @@ _TRAINING_SPLIT = "training"
 
 #: Split early stopping is scored on.
 _VALIDATION_SPLIT = "validation"
+
+#: ``embedding.fit_on`` value naming every item, and the default, as in
+#: :mod:`musicsim.embeddings`.
+_FIT_ON_ALL = "all"
+_FIT_ON_DEFAULT = _TRAINING_SPLIT
 
 #: Suffix of the temporary file the summary is written to before renaming.
 _PARTIAL_SUFFIX = ".partial"
@@ -247,76 +270,71 @@ class VectorSiameseExtractor(Extractor):
     ) -> tuple[np.ndarray, np.ndarray, list[tuple[int, str]]]:
         """``(X, ids, failures)`` as in :meth:`Extractor.extract_all`, X unit-norm rows.
 
-        ``n_jobs`` and ``progress`` are accepted for the common interface; the
-        input extractor reads them from the configuration, and the training loop
-        logs its own progress once per epoch.
+        On the training corpus the head is trained (or loaded) on ``index`` and
+        applied to it; on another corpus it is trained (or loaded) on the
+        training corpus's own index and applied to ``index``. ``n_jobs`` and
+        ``progress`` are accepted for the common interface; the input extractor
+        reads them from the configuration, and the training loop logs its own
+        progress once per epoch.
         """
-        import torch
-
-        from musicsim.training.models import count_parameters
-        from musicsim.training.train import BEST_CHECKPOINT
-
-        inputs, ids, failures = self._input_features(index)
-        items = _item_columns(index, ids)
+        training = self.training_config()
+        on_training_corpus = training is self.config
+        training_index = (
+            index
+            if on_training_corpus
+            else pd.read_csv(paths.dataset_index(training.require("dataset.directory")))
+        )
+        inputs, ids, failures = _cached_input(training, training_index)
+        items = _item_columns(training_index, ids)
         features = standardize_on_training(
             inputs, items[_SPLIT_COLUMN].to_numpy() == _TRAINING_SPLIT
         )
-        model = self._build_model(features.shape[1])
-        logger.info("%s: %d trainable parameters", self.name, count_parameters(model))
+        model = self._trained_head(training, features, ids, items)
+        if on_training_corpus:
+            return _project(model, features), ids, failures
 
-        out_dir = self.checkpoint_dir()
-        if (out_dir / TRAINING_SUMMARY).is_file():
-            logger.info("%s: using the trained head in %s", self.name, out_dir)
-            model.load_state_dict(torch.load(out_dir / BEST_CHECKPOINT, weights_only=True))
-        else:
-            self._train(model, features, ids, items, out_dir)
+        inputs, ids, failures = _cached_input(self.config, index)
+        features = standardize_on_training(inputs, _fit_rows(self.config, index, ids))
+        logger.info(
+            "%s: %d items of %r embedded with the head trained on %r",
+            self.name,
+            len(ids),
+            self.config.require("dataset.directory"),
+            training.require("dataset.directory"),
+        )
         return _project(model, features), ids, failures
 
-    # -- input ----------------------------------------------------------------
+    # -- configuration ------------------------------------------------------------
+    def training_config(self) -> Config:
+        """The configuration the head is trained under.
+
+        On the corpus of :data:`TRAINING_CORPUS` it is this configuration
+        itself; on another corpus, this one with its ``dataset`` section replaced
+        by that of :data:`TRAINING_CORPUS`.
+        """
+        corpus = compose(TRAINING_CORPUS)
+        if self.config.require("dataset.directory") == corpus["dataset"]["directory"]:
+            return self.config
+        data = self.config.to_dict()
+        data["dataset"] = corpus["dataset"]
+        return Config(data=data, source=self.config.source)
+
     def input_config(self) -> Config:
         """The configuration of the input extractor, overrides applied."""
-        from musicsim.representations import RepresentationSpec, spec_config
-
-        name = str(self.config.require("extractor.input.extractor"))
-        overrides = self.config.get("extractor.input.overrides") or {}
-        spec = RepresentationSpec(
-            label=name,
-            extractor=name,
-            overrides={f"extractor.{key}": value for key, value in overrides.items()},
-        )
-        return spec_config(self.config, spec)
-
-    def _input_features(
-        self, index: pd.DataFrame
-    ) -> tuple[np.ndarray, np.ndarray, list[tuple[int, str]]]:
-        """The input features of ``index``'s items, in index order, and the items without."""
-        from musicsim.experiments import extract_stage
-
-        input_config = self.input_config()
-        cache = extract_stage(input_config).cache_dir
-        cached = np.load(cache / "features.npy")
-        cached_ids = np.load(cache / "ids.npy")
-
-        wanted = index["item_id"].to_numpy(dtype=np.int64)
-        rows = pd.Index(cached_ids).get_indexer(wanted)
-        input_name = input_config.require("extractor.name")
-        failures = [
-            (int(item_id), f"no {input_name!r} features for this item")
-            for item_id in wanted[rows < 0]
-        ]
-        found = rows >= 0
-        return cached[rows[found]], wanted[found], failures
+        return _input_config(self.config)
 
     def checkpoint_dir(self) -> Path:
         """``paths.checkpoints_dir("<name>-<hash8>")`` of this configuration.
 
-        See the module docstring for what the hash covers.
+        The same on every corpus; see the module docstring for what the hash covers.
         """
+        from musicsim.embeddings import features_cache_dir
+
         key = config_hash(
             {
                 "extractor": self.config.to_dict()["extractor"],
                 "seed": int(self.config.require("seed")),
-                "input_features": self._input_features_name(),
+                "input_features": features_cache_dir(_input_config(self.training_config())).name,
             }
         )
         return paths.checkpoints_dir(f"{self.name}-{key[:8]}")
@@ -337,8 +355,36 @@ class VectorSiameseExtractor(Extractor):
             generator=generator,
         )
 
+    def _trained_head(
+        self,
+        training: Config,
+        features: np.ndarray,
+        ids: np.ndarray,
+        items: pd.DataFrame,
+    ) -> nn.Module:
+        """The head of this configuration, loaded if trained, trained otherwise.
+
+        ``features``, ``ids`` and ``items`` are the standardised input of the
+        training corpus, configured by ``training``.
+        """
+        import torch
+
+        from musicsim.training.models import count_parameters
+        from musicsim.training.train import BEST_CHECKPOINT
+
+        model = self._build_model(features.shape[1])
+        logger.info("%s: %d trainable parameters", self.name, count_parameters(model))
+        out_dir = self.checkpoint_dir()
+        if (out_dir / TRAINING_SUMMARY).is_file():
+            logger.info("%s: using the trained head in %s", self.name, out_dir)
+            model.load_state_dict(torch.load(out_dir / BEST_CHECKPOINT, weights_only=True))
+        else:
+            self._train(training, model, features, ids, items, out_dir)
+        return model
+
     def _train(
         self,
+        training: Config,
         model: nn.Module,
         features: np.ndarray,
         ids: np.ndarray,
@@ -346,6 +392,7 @@ class VectorSiameseExtractor(Extractor):
         out_dir: Path,
     ) -> None:
         """Train ``model`` (resuming an interrupted run) and write the summary."""
+        from musicsim.embeddings import features_cache_dir
         from musicsim.training.models import count_parameters
         from musicsim.training.train import (
             LAST_CHECKPOINT,
@@ -394,7 +441,7 @@ class VectorSiameseExtractor(Extractor):
             len(train_rows),
             len(val_rows),
         )
-        self.config.write(out_dir / RESOLVED_CONFIG)
+        training.write(out_dir / RESOLVED_CONFIG)
         result = train(
             model,
             task,
@@ -414,7 +461,7 @@ class VectorSiameseExtractor(Extractor):
             "stopped_early": result.stopped_early,
             "n_training_items": len(train_rows),
             "n_validation_items": len(val_rows),
-            "input_features": self._input_features_name(),
+            "input_features": features_cache_dir(_input_config(training)).name,
             "validation_effective_rank": diagnostics["effective_rank"],
             "validation_mean_cosine": diagnostics["mean_cosine"],
             "collapsed": diagnostics["collapsed"],
@@ -428,14 +475,56 @@ class VectorSiameseExtractor(Extractor):
             result.epochs,
         )
 
-    def _input_features_name(self) -> str:
-        """Name of the input's feature cache directory, which hashes its settings."""
-        from musicsim.embeddings import features_cache_dir
-
-        return features_cache_dir(self.input_config()).name
-
 
 # --- module helpers ---------------------------------------------------------------
+def _input_config(config: Config) -> Config:
+    """``config`` with the input extractor swapped in and its overrides applied."""
+    from musicsim.representations import RepresentationSpec, spec_config
+
+    name = str(config.require("extractor.input.extractor"))
+    overrides = config.get("extractor.input.overrides") or {}
+    spec = RepresentationSpec(
+        label=name,
+        extractor=name,
+        overrides={f"extractor.{key}": value for key, value in overrides.items()},
+    )
+    return spec_config(config, spec)
+
+
+def _cached_input(
+    config: Config, index: pd.DataFrame
+) -> tuple[np.ndarray, np.ndarray, list[tuple[int, str]]]:
+    """The input features of ``index``'s items, in index order, and the items without."""
+    from musicsim.experiments import extract_stage
+
+    input_config = _input_config(config)
+    cache = extract_stage(input_config).cache_dir
+    cached = np.load(cache / "features.npy")
+    cached_ids = np.load(cache / "ids.npy")
+
+    wanted = index["item_id"].to_numpy(dtype=np.int64)
+    rows = pd.Index(cached_ids).get_indexer(wanted)
+    input_name = input_config.require("extractor.name")
+    failures = [
+        (int(item_id), f"no {input_name!r} features for this item") for item_id in wanted[rows < 0]
+    ]
+    found = rows >= 0
+    return cached[rows[found]], wanted[found], failures
+
+
+def _fit_rows(config: Config, index: pd.DataFrame, ids: np.ndarray) -> np.ndarray:
+    """Which of ``ids`` the standardisation of a corpus is fitted on (``embedding.fit_on``)."""
+    fit_on = config.get("embedding.fit_on", _FIT_ON_DEFAULT)
+    if fit_on == _FIT_ON_ALL:
+        return np.ones(len(ids), dtype=bool)
+    if _SPLIT_COLUMN not in index.columns:
+        raise ValueError(
+            f"embedding.fit_on is {fit_on!r}, but the index has no {_SPLIT_COLUMN!r} column; "
+            f"it has {list(index.columns)}"
+        )
+    return index.set_index("item_id").loc[ids, _SPLIT_COLUMN].to_numpy() == fit_on
+
+
 def _item_columns(index: pd.DataFrame, ids: np.ndarray) -> pd.DataFrame:
     """Split, genre and artist of ``ids``, in order."""
     columns = [_SPLIT_COLUMN, _GENRE_COLUMN, _ARTIST_COLUMN]

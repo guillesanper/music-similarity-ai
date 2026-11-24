@@ -5,7 +5,9 @@ whole path runs for real: input features through ``extract_stage``,
 standardisation on training, training with early stopping, checkpoints, summary
 and projection. The toy dataset has 64 training tracks (4 genres x 16, 4 tracks
 per artist), so one PxK batch of 4 x 16 is the whole training split and an epoch
-is one step, plus 24 validation and 8 test tracks. Skipped as a whole without the
+is one step, plus 24 validation and 8 test tracks. The training corpus
+(``TRAINING_CORPUS``) is pointed at that toy dataset for every test; a second toy
+corpus without genres stands for MagnaTagATune. Skipped as a whole without the
 optional deep-learning extra.
 """
 
@@ -36,10 +38,16 @@ from musicsim.extractors.vector_siamese import (  # noqa: E402
 )
 from musicsim.registry import EXTRACTORS, load_plugins  # noqa: E402
 from musicsim.training import train as train_module  # noqa: E402
-from musicsim.training.train import CURVE_FILE  # noqa: E402
+from musicsim.training.models import MlpHead  # noqa: E402
+from musicsim.training.train import BEST_CHECKPOINT, CURVE_FILE  # noqa: E402
 
 SEED = 7
 DATASET = "toy"
+
+#: The other corpus: 12 clips without genres, the first 6 in its training split.
+OTHER_DATASET = "toy_other"
+OTHER_IDS = list(range(501, 513))
+OTHER_TRAINING = 6
 
 #: Toy dataset: 4 genres; per genre 16 training tracks (4 artists x 4),
 #: 6 validation tracks and 2 test tracks.
@@ -65,6 +73,56 @@ OVERFIT_LOSS = 1e-2
 
 
 # --- fixtures and helpers --------------------------------------------------------
+@pytest.fixture(autouse=True)
+def training_corpus(tmp_path, monkeypatch):
+    """The head is trained on the toy dataset, as it is on FMA small for real."""
+    path = tmp_path / "toy.yaml"
+    path.write_text(f"dataset:\n  directory: {DATASET}\n", encoding="utf-8")
+    monkeypatch.setattr(vector_siamese, "TRAINING_CORPUS", path)
+    return path
+
+
+def _other_config(*, fit_on: str | None = "all") -> Config:
+    data = _config().to_dict()
+    data["dataset"] = {"directory": OTHER_DATASET}
+    if fit_on is not None:
+        data["embedding"] = {"fit_on": fit_on}
+    return Config(data=data)
+
+
+def _other_index(*, with_split: bool = True) -> pd.DataFrame:
+    index = pd.DataFrame(
+        {
+            "item_id": OTHER_IDS,
+            "path": [f"unused/{item_id}.mp3" for item_id in OTHER_IDS],
+            "split": ["training"] * OTHER_TRAINING + ["test"] * (len(OTHER_IDS) - OTHER_TRAINING),
+            "artist_id": OTHER_IDS,
+            "genre_top": "",
+        }
+    )
+    if not with_split:
+        index = index.drop(columns="split")
+    path = paths.dataset_index(OTHER_DATASET)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    index.to_csv(path, index=False)
+    return pd.read_csv(path)
+
+
+def _expected_other(config: Config, fit_rows: np.ndarray) -> np.ndarray:
+    """The trained head applied by hand to the other corpus, standardised on ``fit_rows``."""
+    extractor = VectorSiameseExtractor(config)
+    cache = extract_stage(extractor.input_config()).cache_dir
+    assert np.load(cache / "ids.npy").tolist() == OTHER_IDS
+    features = standardize_on_training(np.load(cache / "features.npy"), fit_rows)
+    head = MlpHead(D_IN, [HIDDEN], DIM, dropout=0.0, generator=torch.Generator().manual_seed(0))
+    head.load_state_dict(
+        torch.load(extractor.checkpoint_dir() / BEST_CHECKPOINT, weights_only=True)
+    )
+    head.eval()
+    with torch.no_grad():
+        return head(torch.from_numpy(features)).numpy()
+
+
 def _config(*, seed: int = SEED, input_dim: int = D_IN, **training: object) -> Config:
     settings = {
         "margin": 0.5,
@@ -256,6 +314,88 @@ def test_input_config_applies_the_overrides() -> None:
     assert input_config.require("extractor.name") == "random"
     assert input_config.require("extractor.dim") == 12
     assert input_config.require("seed") == SEED
+
+
+# --- another corpus ---------------------------------------------------------------------
+def test_training_config_is_this_one_on_the_training_corpus() -> None:
+    config = _config()
+    assert VectorSiameseExtractor(config).training_config() is config
+
+
+def test_training_config_swaps_only_the_dataset_on_another_corpus() -> None:
+    config = _other_config()
+    training = VectorSiameseExtractor(config).training_config().to_dict()
+
+    assert training["dataset"] == {"directory": DATASET}
+    expected = config.to_dict()
+    expected["dataset"] = {"directory": DATASET}
+    assert training == expected
+
+
+def test_the_checkpoint_is_the_same_on_every_corpus() -> None:
+    assert (
+        VectorSiameseExtractor(_other_config()).checkpoint_dir()
+        == VectorSiameseExtractor(_config()).checkpoint_dir()
+    )
+
+
+def test_another_corpus_reuses_the_head_trained_on_the_training_corpus(index, monkeypatch) -> None:
+    _extract(_config(), index)
+    other = _other_index()
+
+    def no_training(*args, **kwargs):
+        raise AssertionError("the head was trained again")
+
+    monkeypatch.setattr(train_module, "train", no_training)
+    config = _other_config()
+    X, ids, failures = _extract(config, other)
+
+    assert ids.tolist() == OTHER_IDS
+    assert failures == []
+    np.testing.assert_allclose(
+        X, _expected_other(config, np.ones(len(OTHER_IDS), dtype=bool)), rtol=0, atol=1e-6
+    )
+
+
+def test_another_corpus_trains_the_head_on_the_training_corpus(index, monkeypatch) -> None:
+    config = _other_config()
+    _extract(config, _other_index())
+    extractor = VectorSiameseExtractor(config)
+
+    summary = _summary(extractor)
+    assert summary["n_training_items"] == N_TRAINING
+    assert summary["n_validation_items"] == N_VALIDATION
+    resolved = (extractor.checkpoint_dir() / RESOLVED_CONFIG).read_text(encoding="utf-8")
+    assert resolved == extractor.training_config().to_yaml()
+
+    def no_training(*args, **kwargs):
+        raise AssertionError("the head was trained again")
+
+    monkeypatch.setattr(train_module, "train", no_training)
+    X, _, _ = _extract(_config(), index)
+    assert X.shape == (N_ITEMS, DIM)
+
+
+def test_another_corpus_is_standardised_on_its_fit_on_split(index) -> None:
+    other = _other_index()
+    by_all, _, _ = _extract(_other_config(fit_on="all"), other)
+    by_training, _, _ = _extract(_other_config(fit_on=None), other)
+
+    training_rows = np.arange(len(OTHER_IDS)) < OTHER_TRAINING
+    np.testing.assert_allclose(
+        by_training, _expected_other(_other_config(fit_on=None), training_rows), atol=1e-6
+    )
+    # The two standardisations differ, so the test above tells them apart.
+    assert np.abs(by_training - by_all).max() > 1e-3
+
+
+def test_another_corpus_needs_a_split_column_unless_fitted_on_all(index) -> None:
+    other = _other_index(with_split=False)
+
+    with pytest.raises(ValueError, match="no 'split' column"):
+        _extract(_other_config(fit_on="training"), other)
+    X, _, _ = _extract(_other_config(fit_on="all"), other)
+    assert X.shape == (len(OTHER_IDS), DIM)
 
 
 # --- input and index errors -----------------------------------------------------------

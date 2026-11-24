@@ -1,5 +1,7 @@
 # MagnaTagATune: 25 863 clips of about 29 s from 5405 Magnatune songs, 188 tags,
-# 270 artists, from Law et al. (2009). Evaluation only: nothing is trained on it.
+# 270 artists, from Law et al. (2009). An evaluation corpus: the only models that
+# learn from it are the heads trained on its 860 similarity constraints, always
+# under the grouped cross-validation below (musicsim/extractors/human_siamese.py).
 # Implemented in musicsim/datasets/mtt.py; details in datasets/mtt/README.md.
 #
 # Limitations (README section 5): 16 kHz mono MP3, so nothing above 8 kHz;

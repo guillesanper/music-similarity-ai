@@ -15,9 +15,12 @@
 
 extractor:
   name: siamese_emb
-  # Input: the cached vectors of another extractor, standardised with the
-  # statistics of the training split. The overrides pin the settings the head
-  # is designed for: MERT's titular layer, chosen once on validation.
+  # Input: the cached vectors of another extractor. The head is always trained
+  # on FMA (configs/datasets/fma_small.yaml), its input standardised with the
+  # statistics of the training split; on another corpus (MTT) the same head is
+  # applied to that corpus standardised on its own embedding.fit_on rows. The
+  # overrides pin the settings the head is designed for: MERT's titular layer,
+  # chosen once on validation.
   input:
     extractor: mert
     overrides:
@@ -28,10 +31,12 @@ extractor:
 
   training:
     # Contrastive loss on the cosine distance (in [0, 2]): negatives are pushed
-    # apart only while closer than the margin. Starting value, to be selected
-    # on validation Recall@10 together with the learning rate.
-    margin: 0.5
-    lr: 1.0e-3                 # Adam
+    # apart only while closer than the margin. Margin and learning rate were
+    # chosen on validation Recall@10 (seed 42, weight decay 1e-4) over margin
+    # {0.25, 0.5, 1.0} x lr {1e-3, 1e-4}: 0.0592-0.0615, best here. The MERT
+    # input on its own scores 0.0606 on the same items, so the head gains little.
+    margin: 0.25
+    lr: 1.0e-4                 # Adam
     weight_decay: 1.0e-4       # Adam's L2 penalty
     # PxK batches: 8 genres x 8 tracks, each genre block by at least two
     # artists. FMA small has exactly 8 genres, so every batch holds all of them.
