@@ -213,6 +213,19 @@ musicsim run configs/experiments/e12_genre_vs_human_mtt.yaml
 musicsim run configs/experiments/e12_genre_vs_human_fma.yaml
 ```
 
+The overfitting of the `human_siamese` heads is read from their checkpoints
+after the MTT run, in a run of its own (`outputs/runs/e12_overfitting/`) that
+leaves the e12 run untouched. It writes `metrics/overfitting_gap.csv`, with the
+agreement on the training constraints, on the inner validation fold and out of
+fold, for every fold, seed and variant. It also writes
+`metrics/overfitting_summary.csv` and `metrics/validation_curves.csv`, and draws
+the validation curves of every fold, MLP head against linear map, in
+`figures/validation_curves.png` and `report/figures/generated/validation_curves.pdf`:
+
+```bash
+python -m musicsim.evaluation.overfitting --run outputs/runs/e12_genre_vs_human_mtt/<timestamp>_<hash>
+```
+
 Later phases add one row each: classical
 classification, graph variants, robustness, model comparison, fuzzy modelling
 and graph neural link prediction.
