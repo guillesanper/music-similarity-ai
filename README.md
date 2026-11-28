@@ -198,6 +198,20 @@ musicsim show configs/experiments/e01_mfcc_baseline.yaml     # resolve it, run n
 | **e02** PCA ablation | Does reducing MFCC's 80 dimensions cost retrieval quality? | same `metrics/` files, one run per `-o embedding.pca.n_components=` override (16, 32, 48) |
 | **e03** Graph structure | Do different representations induce kNN graphs with different structure? | `metrics/structure.csv` (k-occurrence skewness, antihub and hub fractions, reciprocity, clustering, components, genre homophily), `metrics/hubness.csv` (k-occurrence per item), and the kNN graph of every representation under `graphs/<representation>/<gallery>/knn<k>/`; `mfcc`, its PCA reductions (16–64) and three `random` seeds on `fma_test` (`fma_all` with `-o evaluation.structure.galleries=[fma_all]`), near-duplicates collapsed |
 | **e04** Human triplets | Do the representations agree with people's odd-one-out judgements on MagnaTagATune? | `metrics/triplets.csv` (share of the 860 similarity constraints satisfied, unweighted, vote-weighted and with margin ≥ 2, 95 % intervals clustered by triplet), `metrics/triplets_per_constraint.csv` (hit of every constraint), `metrics/triplets_deltas.csv` (paired differences, provisional Holm on the unweighted variant); `mert` (layer 6, chosen on FMA validation), `mfcc` and three `random` seeds |
+| **e12** Genre vs. human judgements | Does a head trained for genre retrieval (`siamese_emb`, FMA) also agree with human similarity, or must it learn from the human judgements (`human_siamese`, MagnaTagATune)? | Two runs over the same representations: `e12_genre_vs_human_mtt.yaml` writes e04's three `triplets*.csv` files (family B, out-of-fold vectors for `human_siamese`, 15 paired differences with Holm, 10 000 resamples), and `e12_genre_vs_human_fma.yaml` writes `metrics/per_query.csv`, `retrieval.csv` and `retrieval_per_genre.csv` on `fma_test` (family A, `human_siamese` as its final model). Representations: `mert`, `mfcc`, and seeds 0–2 of `random`, `siamese_emb`, `human_siamese` (MLP head) and `human_siamese` with `extractor.hidden: []` (linear map) |
+
+e12 trains `human_siamese` the first time it runs. Loading MERT switches
+gradients off for the whole process, which breaks any training that follows in
+the same process, so train each learned representation in a process of its own
+before the two runs. Once the MERT layer cache is in place, nothing in e12 loads
+MERT again, and both runs then only read checkpoints:
+
+```bash
+# once per label human_{mlp,linear}_s{0,1,2}, each in a new process, first on MTT, then on FMA
+python -c "import sys; from musicsim.config import load_config; from musicsim.experiments import extract_stage; from musicsim.representations import parse_representations, spec_config; c = load_config(sys.argv[1]); extract_stage(spec_config(c, next(s for s in parse_representations(c) if s.label == sys.argv[2])))" configs/experiments/e12_genre_vs_human_mtt.yaml human_mlp_s0
+musicsim run configs/experiments/e12_genre_vs_human_mtt.yaml
+musicsim run configs/experiments/e12_genre_vs_human_fma.yaml
+```
 
 Later phases add one row each: classical
 classification, graph variants, robustness, model comparison, fuzzy modelling

@@ -1,0 +1,86 @@
+# E12 (genre) - The same representations as e12_genre_vs_human_mtt.yaml, scored
+# on family A: same-genre retrieval in FMA's test split. Part of SQ5. Report:
+# section 06_results.
+#
+# siamese_emb is the head trained on genre (FMA training split). On this corpus
+# human_siamese is the final model, trained on all 860 MagnaTagATune constraints
+# with the grid point the cross-validation chose
+# (musicsim/extractors/human_siamese.py). It has seen every constraint, so it
+# never appears in the family B run. The genre ground truth is circular for
+# siamese_emb, a model trained on genre and scored on genre, and on this corpus
+# human_siamese faces a change of domain. Neither difference can be read as the
+# effect of the training signal alone.
+#
+# The retrieval evaluator has no paired comparisons yet: the differences against
+# mert are computed from metrics/per_query.csv with
+# musicsim.evaluation.deltas.paired_deltas (bootstrap by artist).
+#
+# Order of execution: as for the MTT twin, every learned representation is
+# trained in a process of its own before this run (README, "Running
+# experiments").
+
+defaults:
+  - ../base.yaml
+  - ../datasets/fma_small.yaml
+  - ../extractors/mert.yaml
+
+experiment: e12_genre_vs_human_fma
+
+# No graph: retrieval finds its own near-duplicates, on the main representation.
+stages: [extract, embed, evaluate]
+
+bootstrap:
+  n_resamples: 10000
+
+# mert is the main representation: the near-duplicates of the gallery are found
+# on it, as in e01_mert_baseline, the same for every seed. Seeds, labels and
+# embedding.standardize: false for the learned heads as in the MTT twin.
+representations:
+  - mert
+  - mfcc
+  - label: random_s0
+    extractor: random
+    overrides: {seed: 0}
+  - label: random_s1
+    extractor: random
+    overrides: {seed: 1}
+  - label: random_s2
+    extractor: random
+    overrides: {seed: 2}
+  - label: siamese_emb_s0
+    extractor: siamese_emb
+    overrides: {seed: 0, embedding.standardize: false}
+  - label: siamese_emb_s1
+    extractor: siamese_emb
+    overrides: {seed: 1, embedding.standardize: false}
+  - label: siamese_emb_s2
+    extractor: siamese_emb
+    overrides: {seed: 2, embedding.standardize: false}
+  - label: human_mlp_s0
+    extractor: human_siamese
+    overrides: {seed: 0, embedding.standardize: false}
+  - label: human_mlp_s1
+    extractor: human_siamese
+    overrides: {seed: 1, embedding.standardize: false}
+  - label: human_mlp_s2
+    extractor: human_siamese
+    overrides: {seed: 2, embedding.standardize: false}
+  - label: human_linear_s0
+    extractor: human_siamese
+    overrides: {seed: 0, extractor.hidden: [], embedding.standardize: false}
+  - label: human_linear_s1
+    extractor: human_siamese
+    overrides: {seed: 1, extractor.hidden: [], embedding.standardize: false}
+  - label: human_linear_s2
+    extractor: human_siamese
+    overrides: {seed: 2, extractor.hidden: [], embedding.standardize: false}
+
+evaluation:
+  retrieval:
+    enabled: true
+    galleries: [fma_test]
+    queries: all
+
+outputs:
+  metrics: [retrieval.csv, retrieval_per_genre.csv, per_query.csv]
+  figures: []

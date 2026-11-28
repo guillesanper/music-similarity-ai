@@ -1,0 +1,117 @@
+# E12 (human judgements) - Does training for genre retrieval also improve human
+# similarity, or does it have to be learned from the human judgements directly?
+# Part of SQ5. The same head over the same input (MERT's titular layer) trained
+# with two signals: genre on FMA (siamese_emb) and MagnaTagATune's similarity
+# constraints (human_siamese, as the head of siamese_emb and as a linear map).
+# All are scored on family B, the 860 constraints (Wolff et al. 2012), as in
+# e04. Its twin on family A is e12_genre_vs_human_fma.yaml. Report: section
+# 06_results.
+#
+# The human_siamese vectors are out of fold: each constrained clip is embedded by
+# the model of the grouped cross-validation fold that held it out
+# (musicsim/extractors/human_siamese.py). The interval of a seed comes from the
+# bootstrap over triplets and does not include the spread between the ten fold
+# models or between seeds; that spread is reported apart. siamese_emb is trained
+# on FMA only, so on MTT it also faces a change of domain (no audio above 8 kHz,
+# another catalogue): a lower agreement need not come from its supervision.
+#
+# Order of execution: every learned representation is trained in a process of its
+# own before this run, because loading MERT switches gradients off for the whole
+# process (README, "Running experiments").
+
+defaults:
+  - ../base.yaml
+  - ../datasets/mtt.yaml
+  - ../extractors/mert.yaml
+
+experiment: e12_genre_vs_human_mtt
+
+# Every MTT clip is embedded (embedding.fit_on: all in configs/datasets/mtt.yaml);
+# the human_siamese vectors cover only the 993 constrained clips, which is what
+# the evaluator aligns on.
+stages: [extract, embed, evaluate]
+
+# The final tables use 10 000 resamples (musicsim.evaluation.bootstrap).
+bootstrap:
+  n_resamples: 10000
+
+# mert is the main representation and the reference of every comparison. Seeds
+# 0, 1 and 2 for every seeded representation: seed 42 chose the margin and
+# learning rate of siamese_emb on FMA validation, so it is left out here. The
+# learned heads already return unit-norm vectors, and standardising them would
+# change the cosine they were trained on, hence embedding.standardize: false.
+representations:
+  - mert
+  - mfcc
+  - label: random_s0
+    extractor: random
+    overrides: {seed: 0}
+  - label: random_s1
+    extractor: random
+    overrides: {seed: 1}
+  - label: random_s2
+    extractor: random
+    overrides: {seed: 2}
+  # Trained on genre (FMA), applied to MTT standardised on every MTT clip.
+  - label: siamese_emb_s0
+    extractor: siamese_emb
+    overrides: {seed: 0, embedding.standardize: false}
+  - label: siamese_emb_s1
+    extractor: siamese_emb
+    overrides: {seed: 1, embedding.standardize: false}
+  - label: siamese_emb_s2
+    extractor: siamese_emb
+    overrides: {seed: 2, embedding.standardize: false}
+  # Trained on the human constraints, the head of siamese_emb (768 -> 512 -> 128).
+  - label: human_mlp_s0
+    extractor: human_siamese
+    overrides: {seed: 0, embedding.standardize: false}
+  - label: human_mlp_s1
+    extractor: human_siamese
+    overrides: {seed: 1, embedding.standardize: false}
+  - label: human_mlp_s2
+    extractor: human_siamese
+    overrides: {seed: 2, embedding.standardize: false}
+  # The same, as a linear map (768 -> 128), the reference of Wolff et al. (2012).
+  - label: human_linear_s0
+    extractor: human_siamese
+    overrides: {seed: 0, extractor.hidden: [], embedding.standardize: false}
+  - label: human_linear_s1
+    extractor: human_siamese
+    overrides: {seed: 1, extractor.hidden: [], embedding.standardize: false}
+  - label: human_linear_s2
+    extractor: human_siamese
+    overrides: {seed: 2, extractor.hidden: [], embedding.standardize: false}
+
+evaluation:
+  retrieval:
+    enabled: false
+  triplets:
+    enabled: true
+    # Paired differences (first minus second), each seed against the same seed.
+    # Holm runs over the unweighted variant of all 15, fixed before any result:
+    # human - mert and genre - mert (does training help at all?) and human -
+    # genre (which signal helps more?), for both human variants. Both are in the
+    # family so that neither has to be picked as "the" human model after the
+    # fact. Whether the linear map is enough against the MLP is read from the
+    # validation curves, not from these differences.
+    comparisons:
+      - [human_mlp_s0, mert]
+      - [human_mlp_s1, mert]
+      - [human_mlp_s2, mert]
+      - [human_linear_s0, mert]
+      - [human_linear_s1, mert]
+      - [human_linear_s2, mert]
+      - [siamese_emb_s0, mert]
+      - [siamese_emb_s1, mert]
+      - [siamese_emb_s2, mert]
+      - [human_mlp_s0, siamese_emb_s0]
+      - [human_mlp_s1, siamese_emb_s1]
+      - [human_mlp_s2, siamese_emb_s2]
+      - [human_linear_s0, siamese_emb_s0]
+      - [human_linear_s1, siamese_emb_s1]
+      - [human_linear_s2, siamese_emb_s2]
+
+outputs:
+  metrics: [triplets.csv, triplets_per_constraint.csv, triplets_deltas.csv]
+  figures: []
